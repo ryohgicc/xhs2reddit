@@ -219,11 +219,11 @@ class XHSNoteExtractor {
             src = src.split(',')[0].split(' ')[0];
           }
           
-          // 只保留sns-webpic-qc.xhscdn.com域名的图片
-          if (src.includes('sns-webpic-qc.xhscdn.com')) {
+          // 保留所有小红书域名的图片
+          if (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('sns-img-qc.xhscdn.com')) {
             const cleanUrl = this.cleanImageUrl(src);
-            // 只提取包含 notes_pre_post/ 且以 !nd_dft_wlteh_webp_3 结尾的图片
-            if (cleanUrl && cleanUrl.includes('notes_pre_post/') && cleanUrl.endsWith('!nd_dft_wlteh_webp_3') && !seenUrls.has(cleanUrl)) {
+            // 提取小红书笔记相关图片，放宽格式限制
+            if (cleanUrl && !seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
               images.push({
                 url: cleanUrl,
