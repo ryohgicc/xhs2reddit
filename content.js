@@ -190,7 +190,7 @@ class XHSNoteExtractor {
     const images = [];
     const seenUrls = new Set();
     
-    // 小红书笔记图片的选择器 - 全面覆盖所有可能的图片元素
+    // 小红书笔记图片的选择器
     const imageSelectors = [
       // 笔记详情页的图片
       '.note-content img',
@@ -202,16 +202,9 @@ class XHSNoteExtractor {
       // 轮播图图片
       '.swiper-slide img',
       '.slider-item img',
-      '.note-slider-img',
-      // 图片容器内的图片
-      '.note-image img',
-      '.image-container img',
-      '.photo-item img',
-      // 所有小红书CDN的图片
+      // 通用图片
       'img[src*="sns-webpic-qc.xhscdn.com"]',
-      'img[src*="xhscdn.com"]',
-      'img[data-src*="sns-webpic-qc.xhscdn.com"]',
-      'img[data-src*="xhscdn.com"]'
+      'img[src*="xhscdn.com"]'
     ];
     
     let imageIndex = 1;
@@ -227,11 +220,17 @@ class XHSNoteExtractor {
             src = src.split(',')[0].split(' ')[0];
           }
           
-          // 移除URL中的空格和引号
-          src = src.trim().replace(/^["']|["']$/g, '');
+          // 严格限制：只识别符合以下三种格式的图片
+          // 1. 包含 notes_pre_post 路径的图片
+          // 2. 包含特定格式的图片URL
+          const isValidNoteImage = (
+            src.includes('notes_pre_post') ||
+            (src.includes('sns-webpic-qc.xhscdn.com') && 
+             !src.includes('spectrum/') && 
+             !src.match(/\/[^/]*!nd_dft_wlteh_webp_\d$/))
+          );
           
-          // 保留所有小红书CDN的图片，包括用户提供的格式
-          if (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('xhscdn.com')) {
+          if (isValidNoteImage) {
             const cleanUrl = this.cleanImageUrl(src);
             if (cleanUrl && !seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
