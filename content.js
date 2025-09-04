@@ -203,7 +203,8 @@ class XHSNoteExtractor {
       '.swiper-slide img',
       '.slider-item img',
       // 通用图片
-      'img[src*="sns-webpic-qc.xhscdn.com"]'
+      'img[src*="sns-webpic-qc.xhscdn.com"]',
+      'img[src*="xhscdn.com"]'
     ];
     
     let imageIndex = 1;
@@ -219,10 +220,10 @@ class XHSNoteExtractor {
             src = src.split(',')[0].split(' ')[0];
           }
           
-          // 保留所有小红书域名的图片
-          if (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('sns-img-qc.xhscdn.com')) {
+          // 保留所有小红书CDN的图片
+          if (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('xhscdn.com')) {
             const cleanUrl = this.cleanImageUrl(src);
-            // 提取小红书笔记相关图片，放宽格式限制
+            // 放宽条件：提取所有小红书CDN的图片，不限制路径和格式
             if (cleanUrl && !seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
               images.push({
