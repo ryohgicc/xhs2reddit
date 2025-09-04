@@ -190,7 +190,7 @@ class XHSNoteExtractor {
     const images = [];
     const seenUrls = new Set();
     
-    // 小红书笔记图片的选择器
+    // 小红书笔记图片的选择器 - 全面覆盖所有可能的图片元素
     const imageSelectors = [
       // 笔记详情页的图片
       '.note-content img',
@@ -202,9 +202,16 @@ class XHSNoteExtractor {
       // 轮播图图片
       '.swiper-slide img',
       '.slider-item img',
-      // 通用图片
+      '.note-slider-img',
+      // 图片容器内的图片
+      '.note-image img',
+      '.image-container img',
+      '.photo-item img',
+      // 所有小红书CDN的图片
       'img[src*="sns-webpic-qc.xhscdn.com"]',
-      'img[src*="xhscdn.com"]'
+      'img[src*="xhscdn.com"]',
+      'img[data-src*="sns-webpic-qc.xhscdn.com"]',
+      'img[data-src*="xhscdn.com"]'
     ];
     
     let imageIndex = 1;
@@ -220,10 +227,12 @@ class XHSNoteExtractor {
             src = src.split(',')[0].split(' ')[0];
           }
           
-          // 保留所有小红书CDN的图片
+          // 移除URL中的空格和引号
+          src = src.trim().replace(/^["']|["']$/g, '');
+          
+          // 保留所有小红书CDN的图片，包括用户提供的格式
           if (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('xhscdn.com')) {
             const cleanUrl = this.cleanImageUrl(src);
-            // 放宽条件：提取所有小红书CDN的图片，不限制路径和格式
             if (cleanUrl && !seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
               images.push({
