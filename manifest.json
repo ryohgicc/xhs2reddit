@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "小红书笔记搬运助手",
+  "version": "1.0.6",
+  "description": "自动提取小红书笔记内容，支持标题、正文和图片下载",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "downloads",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.xiaohongshu.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.xiaohongshu.com/explore*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "小红书笔记搬运助手"
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "floating-panel.html",
+        "styles/*"
+      ],
+      "matches": [
+        "https://www.xiaohongshu.com/*"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,265 @@
+/* 悬浮面板 */
+.xhs-extractor-panel {
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  width: 320px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+/* 面板头部 */
+.xhs-extractor-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #ff2442 0%, #ff4757 100%);
+  color: white;
+}
+
+.xhs-extractor-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.xhs-extractor-title::before {
+  content: '📋';
+  font-size: 18px;
+}
+
+.xhs-extractor-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: white;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.xhs-extractor-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+/* 面板内容 */
+.xhs-extractor-content {
+  padding: 20px;
+}
+
+/* 提取按钮 */
+.xhs-extractor-button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #ff2442 0%, #ff4757 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(255, 36, 66, 0.3);
+}
+
+.xhs-extractor-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 36, 66, 0.4);
+}
+
+.xhs-extractor-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(255, 36, 66, 0.3);
+}
+
+.xhs-extractor-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* 结果区域 */
+.xhs-extractor-result {
+  padding: 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.xhs-extractor-info {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.xhs-extractor-info-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.xhs-extractor-info-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+}
+
+.xhs-extractor-info-value {
+  color: #ff2442;
+  font-weight: 500;
+}
+
+/* 下载按钮 */
+.xhs-extractor-download {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  color: #ff2442;
+  border: 1px solid #ff2442;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: all 0.3s ease;
+}
+
+.xhs-extractor-download:hover {
+  background: #ff2442;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 36, 66, 0.3);
+}
+
+/* 加载动画 */
+.xhs-extractor-loading {
+  text-align: center;
+  padding: 30px;
+  color: #666;
+}
+
+.xhs-extractor-loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #ff2442;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
+}
+
+/* 错误提示 */
+.xhs-extractor-error {
+  padding: 20px;
+  color: #ff4757;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* 拖拽状态 */
+.xhs-extractor-panel.dragging {
+  opacity: 0.8;
+  transform: scale(1.02);
+  transition: none;
+}
+
+/* 动画 */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* 响应式设计 */
+@media (max-width: 480px) {
+  .xhs-extractor-panel {
+    width: calc(100vw - 40px);
+    right: 20px;
+    left: 20px;
+    top: 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .xhs-extractor-panel {
+    width: 280px;
+  }
+}
+
+/* 深色模式 */
+@media (prefers-color-scheme: dark) {
+  .xhs-extractor-panel {
+    background: #1a1a1a;
+    color: #e5e5e5;
+    border-color: #333;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  
+  .xhs-extractor-result {
+    background: #0f0f0f;
+  }
+  
+  .xhs-extractor-header {
+    border-bottom-color: #333;
+  }
+  
+  .xhs-extractor-title {
+    color: #e5e5e5;
+  }
+  
+  .xhs-extractor-close {
+    color: #e5e5e5;
+  }
+  
+  .xhs-extractor-info-label {
+    color: #e5e5e5;
+  }
+  
+  .xhs-extractor-info-value {
+    color: #ff6b6b;
+  }
+  
+  .xhs-extractor-download {
+    background: #333;
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+  }
+  
+  .xhs-extractor-download:hover {
+    background: #ff6b6b;
+    color: #1a1a1a;
+  }
+}

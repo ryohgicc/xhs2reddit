@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小红书笔记搬运助手 - 兼容性测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #ff2442;
+        }
+        .test-item {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #ff2442;
+        }
+        .test-result {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .pass { background: #52c41a; color: white; }
+        .fail { background: #ff4d4f; color: white; }
+        .warning { background: #faad14; color: white; }
+        .code {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        button {
+            background: #ff2442;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #e0203b;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>小红书笔记搬运助手 - 跨浏览器兼容性测试</h1>
+        <p>此页面用于测试扩展在不同浏览器中的兼容性</p>
+        
+        <h2>浏览器兼容性检查</h2>
+        
+        <div class="test-item">
+            <strong>浏览器检测:</strong>
+            <div id="browser-info"></div>
+        </div>
+        
+        <div class="test-item">
+            <strong>扩展API支持:</strong>
+            <div id="api-support"></div>
+        </div>
+        
+        <div class="test-item">
+            <strong>DOM选择器测试:</strong>
+            <div id="selector-test"></div>
+        </div>
+        
+        <div class="test-item">
+            <strong>存储功能测试:</strong>
+            <div id="storage-test"></div>
+        </div>
+        
+        <div class="test-item">
+            <strong>下载功能测试:</strong>
+            <div id="download-test"></div>
+        </div>
+
+        <h2>URL格式测试用例</h2>
+        
+        <div class="test-item">
+            <h3>测试用例 1: 发现页面</h3>
+            <div class="code">https://www.xiaohongshu.com/discovery/item/abc123</div>
+            <div class="test-result" id="test1">测试中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试用例 2: 用户提供的URL格式1</h3>
+            <div class="code">https://www.xiaohongshu.com/explore/68b8f5b4000000001c03e433?xsec_token=ABRClIdo0OxzYb9atHF7_RLjUMMPRW0vRTVrNbt_gCzOI=&xsec_source=pc_feed</div>
+            <div class="test-result" id="test2">测试中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试用例 3: 用户提供的URL格式2</h3>
+            <div class="code">https://www.xiaohongshu.com/explore/68ae57b6000000001d003819?xsec_token=ABD_z17uVbGE5DPoV2Caix5UJV5o4JLU33wtkn6JOom48=&xsec_source=pc_user</div>
+            <div class="test-result" id="test3">测试中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试用例 4: 用户提供的URL格式3</h3>
+            <div class="code">https://www.xiaohongshu.com/explore/68b8c417000000001b030835?xsec_token=ABRClIdo0OxzYb9atHF7_RLlp_XDvL8LqqCBqqUQk-PTM=&xsec_source=pc_feed</div>
+            <div class="test-result" id="test4">测试中...</div>
+        </div>
+
+        <div class="test-item">
+            <h3>测试用例 5: 用户主页</h3>
+            <div class="code">https://www.xiaohongshu.com/user/profile/123</div>
+            <div class="test-result" id="test5">测试中...</div>
+        </div>
+
+        <h2>SPA导航测试</h2>
+        <div class="test-container">
+            <div class="test-instructions">
+                <p><strong>SPA导航测试步骤：</strong></p>
+                <ol>
+                    <li>先访问 <code>https://www.xiaohongshu.com/explore?channel_id=homefeed_recommend</code></li>
+                    <li>点击任意笔记进入详情页</li>
+                    <li>观察插件是否自动触发</li>
+                    <li>使用浏览器前进/后退按钮测试</li>
+                </ol>
+            </div>
+            <div class="test-item">
+                <h3>URL匹配测试</h3>
+                <div class="code" data-url="https://www.xiaohongshu.com/explore/68b6d310000000001d03784f?xsec_token=AB7Pllv1fjNYCGy4-OXJOzE-9912SbIqxzfcDPygvDF5E=&xsec_source=pc_feed">笔记详情页1</div>
+                <div class="test-result" id="spa-test1">测试中...</div>
+            </div>
+            <div class="test-item">
+                <div class="code" data-url="https://www.xiaohongshu.com/explore/68b70116000000001c035365?xsec_token=ABPXNUKY3MtCE9g81jZvSa206JrYlrJt8N10E-bolJ9OM=&xsec_source=pc_feed">笔记详情页2</div>
+                <div class="test-result" id="spa-test2">测试中...</div>
+            </div>
+            <div class="test-item">
+                <div class="code" data-url="https://www.xiaohongshu.com/explore?channel_id=homefeed_recommend">探索页</div>
+                <div class="test-result" id="spa-test3">测试中...</div>
+            </div>
+            <div id="spa-test-result" class="test-result">等待测试...</div>
+        </div>
+        
+        <button onclick="runTests()">运行兼容性测试</button>
+        <button onclick="downloadTestData()">测试下载功能</button>
+        <button onclick="clearTestData()">清除测试数据</button>
+    </div>
+
+    <script>
+        function runTests() {
+            // 浏览器检测
+            const browserInfo = detectBrowser();
+            document.getElementById('browser-info').innerHTML = `
+                <div class="test-result ${browserInfo.supported ? 'pass' : 'warning'}">
+                    ${browserInfo.name} ${browserInfo.version} - ${browserInfo.supported ? '支持' : '未测试'}
+                </div>
+            `;
+            
+            // API支持检测
+            const apiSupport = checkAPIs();
+            document.getElementById('api-support').innerHTML = apiSupport.map(api => 
+                `<div class="test-result ${api.supported ? 'pass' : 'fail'}">${api.name}: ${api.supported ? '支持' : '不支持'}</div>`
+            ).join('');
+            
+            // DOM选择器测试
+            const selectorTest = testSelectors();
+            document.getElementById('selector-test').innerHTML = selectorTest.map(test => 
+                `<div class="test-result ${test.supported ? 'pass' : 'fail'}">${test.name}: ${test.supported ? '支持' : '不支持'}</div>`
+            ).join('');
+            
+            // 存储功能测试
+            testStorage();
+            
+            // 下载功能测试
+            testDownload();
+            
+            // URL格式测试
+            testUrlFormats();
+        }
+        
+        function testUrlFormats() {
+            const testUrls = [
+                { url: 'https://www.xiaohongshu.com/discovery/item/abc123', id: 'test1', expected: true },
+                { url: 'https://www.xiaohongshu.com/explore/68b8f5b4000000001c03e433?xsec_token=ABRClIdo0OxzYb9atHF7_RLjUMMPRW0vRTVrNbt_gCzOI=&xsec_source=pc_feed', id: 'test2', expected: true },
+                { url: 'https://www.xiaohongshu.com/explore/68ae57b6000000001d003819?xsec_token=ABD_z17uVbGE5DPoV2Caix5UJV5o4JLU33wtkn6JOom48=&xsec_source=pc_user', id: 'test3', expected: true },
+                { url: 'https://www.xiaohongshu.com/explore/68b8c417000000001b030835?xsec_token=ABRClIdo0OxzYb9atHF7_RLlp_XDvL8LqqCBqqUQk-PTM=&xsec_source=pc_feed', id: 'test4', expected: true },
+                { url: 'https://www.xiaohongshu.com/user/profile/123', id: 'test5', expected: false }
+            ];
+            
+            testUrls.forEach(({url, id, expected}) => {
+                const isValid = /xiaohongshu\.com\/(discovery\/item|explore)\//.test(url);
+                document.getElementById(id).className = `test-result ${isValid === expected ? 'pass' : 'fail'}`;
+                document.getElementById(id).textContent = isValid === expected ? '通过' : '失败';
+            });
+        }
+        
+        function detectBrowser() {
+            const ua = navigator.userAgent;
+            let browser = 'Unknown';
+            let version = 'Unknown';
+            
+            if (ua.includes('Chrome') && !ua.includes('Edg')) {
+                browser = 'Chrome';
+                version = ua.match(/Chrome\/(\d+)/)[1];
+            } else if (ua.includes('Firefox')) {
+                browser = 'Firefox';
+                version = ua.match(/Firefox\/(\d+)/)[1];
+            } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+                browser = 'Safari';
+                version = ua.match(/Version\/(\d+)/)[1];
+            } else if (ua.includes('Edg')) {
+                browser = 'Edge';
+                version = ua.match(/Edg\/(\d+)/)[1];
+            }
+            
+            return {
+                name: browser,
+                version: version,
+                supported: ['Chrome', 'Firefox'].includes(browser)
+            };
+        }
+        
+        function checkAPIs() {
+            return [
+                { name: 'chrome.runtime', supported: typeof chrome !== 'undefined' && chrome.runtime },
+                { name: 'chrome.storage', supported: typeof chrome !== 'undefined' && chrome.storage },
+                { name: 'chrome.downloads', supported: typeof chrome !== 'undefined' && chrome.downloads },
+                { name: 'browser.runtime', supported: typeof browser !== 'undefined' && browser.runtime },
+                { name: 'browser.storage', supported: typeof browser !== 'undefined' && browser.storage },
+                { name: 'browser.downloads', supported: typeof browser !== 'undefined' && browser.downloads }
+            ];
+        }
+        
+        function testSelectors() {
+            return [
+                { name: 'querySelector', supported: !!document.querySelector },
+                { name: 'querySelectorAll', supported: !!document.querySelectorAll },
+                { name: 'getElementsByClassName', supported: !!document.getElementsByClassName },
+                { name: 'getElementById', supported: !!document.getElementById }
+            ];
+        }
+        
+        function testStorage() {
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage) {
+                    chrome.storage.local.set({test: 'data'}, () => {
+                        chrome.storage.local.get('test', (result) => {
+                            document.getElementById('storage-test').innerHTML = `
+                                <div class="test-result ${result.test === 'data' ? 'pass' : 'fail'}">
+                                    Chrome存储: ${result.test === 'data' ? '正常' : '异常'}
+                                </div>
+                            `;
+                        });
+                    });
+                } else if (typeof browser !== 'undefined' && browser.storage) {
+                    browser.storage.local.set({test: 'data'}).then(() => {
+                        return browser.storage.local.get('test');
+                    }).then(result => {
+                        document.getElementById('storage-test').innerHTML = `
+                            <div class="test-result ${result.test === 'data' ? 'pass' : 'fail'}">
+                                Firefox存储: ${result.test === 'data' ? '正常' : '异常'}
+                            </div>
+                        `;
+                    });
+                } else {
+                    document.getElementById('storage-test').innerHTML = `
+                        <div class="test-result fail">存储API: 不可用</div>
+                    `;
+                }
+            } catch (e) {
+                document.getElementById('storage-test').innerHTML = `
+                    <div class="test-result fail">存储测试失败: ${e.message}</div>
+                `;
+            }
+        }
+        
+        function testDownload() {
+            try {
+                const blob = new Blob(['测试数据'], {type: 'text/plain'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '测试文件.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                document.getElementById('download-test').innerHTML = `
+                    <div class="test-result pass">下载功能: 正常</div>
+                `;
+            } catch (e) {
+                document.getElementById('download-test').innerHTML = `
+                    <div class="test-result fail">下载测试失败: ${e.message}</div>
+                `;
+            }
+        }
+        
+        function downloadTestData() {
+            const testData = {
+                title: "测试笔记标题",
+                author: "测试作者",
+                content: "这是测试内容，用于验证下载功能。\n第二行测试内容。",
+                images: ["https://via.placeholder.com/400x300"],
+                url: window.location.href,
+                extractedAt: new Date().toISOString(),
+                platform: "xiaohongshu",
+                version: "1.0.0"
+            };
+            
+            const blob = new Blob([JSON.stringify(testData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '测试数据.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function clearTestData() {
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.local.clear(() => {
+                    alert('测试数据已清除');
+                });
+            } else if (typeof browser !== 'undefined' && browser.storage) {
+                browser.storage.local.clear().then(() => {
+                    alert('测试数据已清除');
+                });
+            } else {
+                alert('存储API不可用');
+            }
+        }
+        
+        // 页面加载时运行测试
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>
