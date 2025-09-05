@@ -177,147 +177,159 @@ class XHSNoteExtractor {
 
       // 等待页面元素加载
       setTimeout(() => {
-        // 对于图片提交页面，通常没有标题输入框，只有描述框
-        if (!isImageSubmit) {
-          // 尝试多种选择器填入标题
-          const titleSelectors = [
-            'textarea[name="title"]#innerTextArea',
-            '#innerTextArea',
-            'textarea[name="title"]',
-            'textarea[aria-labelledby="fp-input-label"]',
-            'textarea[maxlength="300"]',
-            'textarea[required]'
-          ];
-
-          console.log('查找标题输入框...');
-          for (const selector of titleSelectors) {
-            const titleTextarea = document.querySelector(selector);
-            console.log(`选择器 ${selector}:`, titleTextarea);
-            if (titleTextarea && data.title) {
-              console.log('找到标题输入框:', selector, titleTextarea);
-              
-              // 清空并设置值
-              titleTextarea.value = '';
-              titleTextarea.focus();
-              
-              // 模拟用户输入
-              for (let i = 0; i < data.title.length; i++) {
-                titleTextarea.value += data.title[i];
-                titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-              }
-              
-              // 触发各种事件
-              titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-              titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
-              
-              console.log('标题填充完成，当前值:', titleTextarea.value);
-              titleFilled = true;
-              break;
-            }
-          }
-
-          if (!titleFilled) {
-            console.log('未找到标题输入框，尝试查找所有textarea元素:');
-            const allTextareas = document.querySelectorAll('textarea');
-            allTextareas.forEach((textarea, index) => {
-              console.log(`Textarea ${index}:`, textarea, {
-                name: textarea.name,
-                id: textarea.id,
-                className: textarea.className,
-                placeholder: textarea.placeholder
-              });
-            });
-          }
-        } else {
-          console.log('图片提交页面，跳过标题填充');
-          titleFilled = true; // 对于图片页面，标题不是必需的
-        }
-
-        // 尝试多种选择器填入内容
-        const contentSelectors = [
-          'div[data-lexical-editor="true"][contenteditable="true"]',
-          'div[name="body"][contenteditable="true"]',
-          'div[role="textbox"][contenteditable="true"]',
-          'div[aria-label*="正文文本"][contenteditable="true"]',
-          'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
-          'span[data-lexical-text="true"]',
-          '[data-lexical-text="true"]'
+        // 查找标题输入框（对于图片提交页面，这个输入框实际上是描述框）
+        const titleSelectors = [
+          'textarea[name="title"]#innerTextArea',
+          '#innerTextArea',
+          'textarea[name="title"]',
+          'textarea[aria-labelledby="fp-input-label"]',
+          'textarea[maxlength="300"]',
+          'textarea[required]'
         ];
 
-        console.log('查找内容输入框...');
-        for (const selector of contentSelectors) {
-          const contentElement = document.querySelector(selector);
-          console.log(`选择器 ${selector}:`, contentElement);
-          if (contentElement && data.content) {
-            console.log('找到内容输入框:', selector, contentElement);
+        console.log('查找标题/描述输入框...');
+        for (const selector of titleSelectors) {
+          const titleTextarea = document.querySelector(selector);
+          console.log(`选择器 ${selector}:`, titleTextarea);
+          if (titleTextarea) {
+            console.log('找到输入框:', selector, titleTextarea);
             
-            // 聚焦元素
-            contentElement.focus();
+            // 聚焦并清空
+            titleTextarea.focus();
+            titleTextarea.value = '';
             
-            // 对于contenteditable的div，使用更可靠的方法
-            if (contentElement.contentEditable === 'true') {
-              // 方法1: 使用execCommand (兼容性更好)
-              try {
-                // 选中所有内容并删除
-                document.execCommand('selectAll', false, null);
-                document.execCommand('delete', false, null);
+            // 先输入一个字符来激活页面状态
+            titleTextarea.value = 'a';
+            titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            
+            // 等待50ms让页面状态更新
+            setTimeout(() => {
+              // 清空并填入真正的内容
+              titleTextarea.value = '';
+              
+              // 根据页面类型决定填入什么内容
+              const contentToFill = isImageSubmit ? data.content : data.title;
+              if (contentToFill) {
+                // 逐字符输入
+                for (let i = 0; i < contentToFill.length; i++) {
+                  titleTextarea.value += contentToFill[i];
+                  titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                }
                 
-                // 插入新内容
-                document.execCommand('insertText', false, data.content);
-                console.log('使用execCommand填充内容成功');
-              } catch (e) {
-                console.log('execCommand失败，尝试其他方法:', e);
+                // 触发各种事件
+                titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+                titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
                 
-                // 方法2: 直接设置innerHTML
-                contentElement.innerHTML = '';
-                const paragraph = document.createElement('p');
-                paragraph.className = 'first:mt-0 last:mb-0';
-                paragraph.textContent = data.content;
-                contentElement.appendChild(paragraph);
-                console.log('使用innerHTML方法填充内容');
+                console.log('内容填充完成，当前值:', titleTextarea.value);
+                console.log('填充的内容类型:', isImageSubmit ? '描述内容' : '标题');
               }
-            } else {
-              // 对于普通元素
-              contentElement.textContent = data.content;
-            }
+            }, 50);
             
-            // 触发多种事件确保Reddit识别
-            contentElement.dispatchEvent(new Event('focus', { bubbles: true }));
-            contentElement.dispatchEvent(new Event('input', { bubbles: true }));
-            contentElement.dispatchEvent(new Event('change', { bubbles: true }));
-            contentElement.dispatchEvent(new Event('blur', { bubbles: true }));
-            
-            // 额外触发键盘事件
-            contentElement.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
-            contentElement.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-            
-            console.log('内容填充完成，当前内容:', contentElement.textContent || contentElement.innerHTML);
-            contentFilled = true;
+            titleFilled = true;
+            contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
             break;
           }
         }
 
-        if (!contentFilled) {
-          console.log('未找到内容输入框，尝试查找所有contenteditable元素:');
-          const allContentEditable = document.querySelectorAll('[contenteditable="true"]');
-          allContentEditable.forEach((element, index) => {
-            console.log(`ContentEditable ${index}:`, element, {
-              tagName: element.tagName,
-              name: element.name,
-              id: element.id,
-              className: element.className,
-              ariaLabel: element.getAttribute('aria-label')
+        if (!titleFilled) {
+          console.log('未找到标题输入框，尝试查找所有textarea元素:');
+          const allTextareas = document.querySelectorAll('textarea');
+          allTextareas.forEach((textarea, index) => {
+            console.log(`Textarea ${index}:`, textarea, {
+              name: textarea.name,
+              id: textarea.id,
+              className: textarea.className,
+              placeholder: textarea.placeholder
             });
           });
         }
 
+        // 如果没有填充成功且不是图片页面，尝试填充内容到其他元素
+        if (!contentFilled && !isImageSubmit) {
+          // 尝试多种选择器填入内容
+          const contentSelectors = [
+            'div[data-lexical-editor="true"][contenteditable="true"]',
+            'div[name="body"][contenteditable="true"]',
+            'div[role="textbox"][contenteditable="true"]',
+            'div[aria-label*="正文文本"][contenteditable="true"]',
+            'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
+            'span[data-lexical-text="true"]',
+            '[data-lexical-text="true"]'
+          ];
+
+          console.log('查找内容输入框...');
+          for (const selector of contentSelectors) {
+            const contentElement = document.querySelector(selector);
+            console.log(`选择器 ${selector}:`, contentElement);
+            if (contentElement && data.content) {
+              console.log('找到内容输入框:', selector, contentElement);
+              
+              // 聚焦元素
+              contentElement.focus();
+              
+              // 对于contenteditable的div，使用更可靠的方法
+              if (contentElement.contentEditable === 'true') {
+                // 方法1: 使用execCommand (兼容性更好)
+                try {
+                  // 选中所有内容并删除
+                  document.execCommand('selectAll', false, null);
+                  document.execCommand('delete', false, null);
+                  
+                  // 插入新内容
+                  document.execCommand('insertText', false, data.content);
+                  console.log('使用execCommand填充内容成功');
+                } catch (e) {
+                  console.log('execCommand失败，尝试其他方法:', e);
+                  
+                  // 方法2: 直接设置innerHTML
+                  contentElement.innerHTML = '';
+                  const paragraph = document.createElement('p');
+                  paragraph.className = 'first:mt-0 last:mb-0';
+                  paragraph.textContent = data.content;
+                  contentElement.appendChild(paragraph);
+                  console.log('使用innerHTML方法填充内容');
+                }
+              } else {
+                // 对于普通元素
+                contentElement.textContent = data.content;
+              }
+              
+              // 触发多种事件确保Reddit识别
+              contentElement.dispatchEvent(new Event('focus', { bubbles: true }));
+              contentElement.dispatchEvent(new Event('input', { bubbles: true }));
+              contentElement.dispatchEvent(new Event('change', { bubbles: true }));
+              contentElement.dispatchEvent(new Event('blur', { bubbles: true }));
+              
+              // 额外触发键盘事件
+              contentElement.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+              contentElement.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+              
+              console.log('内容填充完成，当前内容:', contentElement.textContent || contentElement.innerHTML);
+              contentFilled = true;
+              break;
+            }
+          }
+
+          if (!contentFilled) {
+            console.log('未找到内容输入框，尝试查找所有contenteditable元素:');
+            const allContentEditable = document.querySelectorAll('[contenteditable="true"]');
+            allContentEditable.forEach((element, index) => {
+              console.log(`ContentEditable ${index}:`, element, {
+                tagName: element.tagName,
+                name: element.name,
+                id: element.id,
+                className: element.className,
+                ariaLabel: element.getAttribute('aria-label')
+              });
+            });
+          }
+        }
+
         // 显示填充结果
         if (titleFilled && contentFilled) {
-          this.showNotification('标题和内容已成功填入Reddit表单', 'success');
+          this.showNotification('内容已成功填入Reddit表单', 'success');
         } else if (titleFilled) {
-          this.showNotification('标题已填入，内容填入失败', 'error');
-        } else if (contentFilled) {
-          this.showNotification('内容已填入，标题填入失败', 'error');
+          this.showNotification('内容已填入，请检查是否正确', 'success');
         } else {
           this.showNotification('填充失败，请手动复制内容', 'error');
           console.log('未找到任何可填充的表单元素');
