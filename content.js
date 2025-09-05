@@ -78,12 +78,20 @@ class XHSNoteExtractor {
   async setImageToClipboard(imageBlob) {
     try {
       if (navigator.clipboard && navigator.clipboard.write) {
+        // 如果是webp格式，转换为jpeg格式
+        let finalBlob = imageBlob;
+        if (imageBlob.type === 'image/webp') {
+          finalBlob = await this.convertWebpToJpeg(imageBlob);
+        }
+        
+        // 确保使用支持的MIME类型
+        const supportedType = finalBlob.type === 'image/png' ? 'image/png' : 'image/jpeg';
         const clipboardItem = new ClipboardItem({
-          [imageBlob.type]: imageBlob
+          [supportedType]: finalBlob
         });
         
         await navigator.clipboard.write([clipboardItem]);
-        console.log('图片已成功设置到剪贴板');
+        console.log('图片已成功设置到剪贴板，格式:', supportedType);
         return true;
       } else {
         console.log('浏览器不支持剪贴板API');
@@ -93,6 +101,33 @@ class XHSNoteExtractor {
       console.error('设置剪贴板失败:', error);
       return false;
     }
+  }
+
+  // 将WebP格式转换为JPEG格式
+  async convertWebpToJpeg(webpBlob) {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        canvas.toBlob((jpegBlob) => {
+          console.log('WebP转换为JPEG成功，原大小:', webpBlob.size, '新大小:', jpegBlob.size);
+          resolve(jpegBlob);
+        }, 'image/jpeg', 0.9);
+      };
+      
+      img.onerror = () => {
+        console.error('图片转换失败，使用原格式');
+        resolve(webpBlob);
+      };
+      
+      img.src = URL.createObjectURL(webpBlob);
+    });
   }
 
   init() {
@@ -268,12 +303,31 @@ class XHSNoteExtractor {
       setTimeout(() => {
         // 查找标题输入框（对于图片提交页面，这个输入框实际上是描述框）
         const titleSelectors = [
+          // 新版Reddit选择器
+          'textarea[placeholder*="Title"]',
+          'textarea[placeholder*="标题"]',
+          'input[placeholder*="Title"]',
+          'input[placeholder*="标题"]',
+          'div[contenteditable="true"][data-testid="post-title-input"]',
+          'div[contenteditable="true"][role="textbox"]',
+          // 通用选择器
+          'textarea[data-testid*="title"]',
+          'input[data-testid*="title"]',
+          'div[data-testid*="title"][contenteditable="true"]',
+          'textarea[aria-label*="title"]',
+          'textarea[aria-label*="Title"]',
+          'input[aria-label*="title"]',
+          'input[aria-label*="Title"]',
+          // 旧版选择器
           'textarea[name="title"]#innerTextArea',
           '#innerTextArea',
           'textarea[name="title"]',
           'textarea[aria-labelledby="fp-input-label"]',
           'textarea[maxlength="300"]',
-          'textarea[required]'
+          'textarea[required]',
+          // 更通用的选择器
+          'textarea:first-of-type',
+          'input[type="text"]:first-of-type'
         ];
 
         console.log('查找标题/描述输入框...');
@@ -281,41 +335,46 @@ class XHSNoteExtractor {
           const titleTextarea = document.querySelector(selector);
           console.log(`选择器 ${selector}:`, titleTextarea);
           if (titleTextarea) {
-            console.log('找到输入框:', selector, titleTextarea);
-            
-            // 聚焦并清空
-            titleTextarea.focus();
-            titleTextarea.value = '';
-            
-            // 根据页面类型决定填入什么内容
-            const contentToFill = isImageSubmit ? data.content : data.title;
-            if (contentToFill) {
-              // 直接设置值
-              titleTextarea.value = contentToFill;
+              console.log('找到输入框:', selector, titleTextarea);
               
-              // 触发各种事件确保Reddit识别
-              titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-              titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-              titleTextarea.dispatchEvent(new Event('keyup', { bubbles: true }));
-              titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
+              // 根据页面类型决定填入什么内容
+              const contentToFill = isImageSubmit ? data.content : data.title;
+              if (contentToFill) {
+                // 根据元素类型选择填充方法
+                if (titleTextarea.tagName.toLowerCase() === 'div' && titleTextarea.contentEditable === 'true') {
+                  // contenteditable div
+                  titleTextarea.focus();
+                  titleTextarea.textContent = '';
+                  setTimeout(() => {
+                    titleTextarea.textContent = contentToFill;
+                    
+                    // 触发contenteditable事件
+                    titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
+                  }, 100);
+                } else {
+                  // textarea或input
+                  titleTextarea.focus();
+                  titleTextarea.value = '';
+                  setTimeout(() => {
+                    titleTextarea.value = contentToFill;
+                    
+                    // 触发表单事件
+                    titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+                    titleTextarea.dispatchEvent(new Event('keyup', { bubbles: true }));
+                    titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
+                  }, 100);
+                }
+                
+                console.log('内容填充完成');
+                console.log('填充的内容类型:', isImageSubmit ? '描述内容' : '标题');
+              }
               
-              // 额外触发键盘事件
-              const keyboardEvent = new KeyboardEvent('keydown', {
-                bubbles: true,
-                cancelable: true,
-                key: 'a',
-                code: 'KeyA'
-              });
-              titleTextarea.dispatchEvent(keyboardEvent);
-              
-              console.log('内容填充完成，当前值:', titleTextarea.value);
-              console.log('填充的内容类型:', isImageSubmit ? '描述内容' : '标题');
+              titleFilled = true;
+              contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
+              break;
             }
-            
-            titleFilled = true;
-            contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
-            break;
-          }
         }
 
         if (!titleFilled) {
