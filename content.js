@@ -9,12 +9,23 @@ class XHSNoteExtractor {
   }
 
   init() {
-    // 检测当前页面类型
     if (this.isRedditSubmitPage()) {
       this.createRedditPanel();
+      // 监听存储变化，实时更新Reddit页面内容
+      this.setupStorageListener();
     } else {
       this.createPanel();
     }
+  }
+
+  setupStorageListener() {
+    // 监听存储变化
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.lastExtractedNote) {
+        // 当存储的笔记数据发生变化时，重新创建Reddit面板
+        this.createRedditPanel();
+      }
+    });
   }
 
   isRedditSubmitPage() {
@@ -77,7 +88,11 @@ class XHSNoteExtractor {
   }
 
   async createRedditPanel() {
-    if (document.querySelector('.xhs-extractor-panel')) return;
+    // 移除已存在的面板
+    const existingPanel = document.querySelector('.xhs-extractor-panel');
+    if (existingPanel) {
+      existingPanel.remove();
+    }
 
     // 从存储中获取上次提取的数据
     const lastExtractedData = await this.getStoredData();
