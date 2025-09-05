@@ -158,7 +158,6 @@ class XHSNoteExtractor {
     if (downloadBtn && data) {
       downloadBtn.addEventListener('click', () => {
         this.fillRedditForm(data);
-        this.downloadData(data);
       });
     }
   }
