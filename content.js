@@ -8,6 +8,79 @@ class XHSNoteExtractor {
     this.init();
   }
 
+  // 准备图片用于粘贴
+  async prepareImagesForPasting(data) {
+    if (!data.images || data.images.length === 0) {
+      console.log('没有图片需要处理');
+      return;
+    }
+
+    try {
+      console.log(`开始处理 ${data.images.length} 张图片`);
+      
+      // 下载第一张图片并转换为Blob
+      const firstImage = data.images[0];
+      const imageBlob = await this.downloadImageAsBlob(firstImage.url);
+      
+      if (imageBlob) {
+        // 将图片设置到剪贴板
+        await this.setImageToClipboard(imageBlob);
+        this.showNotification('图片已准备就绪，可以直接粘贴了！', 'success');
+      } else {
+        this.showNotification('图片处理失败，请手动上传', 'error');
+      }
+    } catch (error) {
+      console.error('准备图片时出错:', error);
+      this.showNotification('图片处理失败，请手动上传', 'error');
+    }
+  }
+
+  // 下载图片为Blob
+  async downloadImageAsBlob(imageUrl) {
+    try {
+      console.log('下载图片:', imageUrl);
+      
+      const response = await fetch(imageUrl, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      console.log('图片下载成功，大小:', blob.size, 'bytes');
+      return blob;
+    } catch (error) {
+      console.error('下载图片失败:', error);
+      return null;
+    }
+  }
+
+  // 将图片设置到剪贴板
+  async setImageToClipboard(imageBlob) {
+    try {
+      if (navigator.clipboard && navigator.clipboard.write) {
+        const clipboardItem = new ClipboardItem({
+          [imageBlob.type]: imageBlob
+        });
+        
+        await navigator.clipboard.write([clipboardItem]);
+        console.log('图片已成功设置到剪贴板');
+        return true;
+      } else {
+        console.log('浏览器不支持剪贴板API');
+        return false;
+      }
+    } catch (error) {
+      console.error('设置剪贴板失败:', error);
+      return false;
+    }
+  }
+
   init() {
     if (this.isRedditSubmitPage()) {
       this.createRedditPanel();
@@ -156,8 +229,10 @@ class XHSNoteExtractor {
     header.addEventListener('mousedown', (e) => this.handleDrag(e));
     
     if (downloadBtn && data) {
-      downloadBtn.addEventListener('click', () => {
+      downloadBtn.addEventListener('click', async () => {
         this.fillRedditForm(data);
+        // 下载图片并设置到剪贴板
+        await this.prepareImagesForPasting(data);
       });
     }
   }
