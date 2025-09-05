@@ -248,10 +248,11 @@ class XHSNoteExtractor {
         if (!contentFilled && !isImageSubmit) {
           // 尝试多种选择器填入内容
           const contentSelectors = [
+            'div[slot="rte"][contenteditable="true"]',
+            'div[aria-label*="正文文本"][contenteditable="true"]',
             'div[data-lexical-editor="true"][contenteditable="true"]',
             'div[name="body"][contenteditable="true"]',
             'div[role="textbox"][contenteditable="true"]',
-            'div[aria-label*="正文文本"][contenteditable="true"]',
             'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
             'span[data-lexical-text="true"]',
             '[data-lexical-text="true"]'
@@ -269,6 +270,9 @@ class XHSNoteExtractor {
               
               // 对于contenteditable的div，使用更可靠的方法
               if (contentElement.contentEditable === 'true') {
+                // 先激活编辑器状态
+                contentElement.focus();
+                
                 // 方法1: 使用execCommand (兼容性更好)
                 try {
                   // 选中所有内容并删除
@@ -281,14 +285,28 @@ class XHSNoteExtractor {
                 } catch (e) {
                   console.log('execCommand失败，尝试其他方法:', e);
                   
-                  // 方法2: 直接设置innerHTML
+                  // 方法2: 直接构建正确的DOM结构
                   contentElement.innerHTML = '';
                   const paragraph = document.createElement('p');
                   paragraph.className = 'first:mt-0 last:mb-0';
-                  paragraph.textContent = data.content;
+                  const span = document.createElement('span');
+                  span.setAttribute('data-lexical-text', 'true');
+                  span.textContent = data.content;
+                  paragraph.appendChild(span);
                   contentElement.appendChild(paragraph);
-                  console.log('使用innerHTML方法填充内容');
+                  console.log('使用DOM结构方法填充内容');
                 }
+                
+                // 额外尝试：模拟用户输入
+                setTimeout(() => {
+                  const inputEvent = new InputEvent('input', {
+                    bubbles: true,
+                    cancelable: true,
+                    inputType: 'insertText',
+                    data: data.content
+                  });
+                  contentElement.dispatchEvent(inputEvent);
+                }, 10);
               } else {
                 // 对于普通元素
                 contentElement.textContent = data.content;
