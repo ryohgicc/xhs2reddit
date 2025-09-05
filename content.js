@@ -164,23 +164,73 @@ class XHSNoteExtractor {
 
   fillRedditForm(data) {
     try {
-      // 填入标题到textarea
-      const titleTextarea = document.querySelector('textarea[name="title"]#innerTextArea');
-      if (titleTextarea && data.title) {
-        titleTextarea.value = data.title;
-        titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-        titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+      let titleFilled = false;
+      let contentFilled = false;
+
+      // 尝试多种选择器填入标题
+      const titleSelectors = [
+        'textarea[name="title"]#innerTextArea',
+        '#innerTextArea',
+        'textarea[name="title"]',
+        'textarea[aria-labelledby="fp-input-label"]'
+      ];
+
+      for (const selector of titleSelectors) {
+        const titleTextarea = document.querySelector(selector);
+        if (titleTextarea && data.title) {
+          console.log('找到标题输入框:', selector);
+          titleTextarea.focus();
+          titleTextarea.value = data.title;
+          
+          // 触发多种事件确保Reddit识别
+          titleTextarea.dispatchEvent(new Event('focus', { bubbles: true }));
+          titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+          titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+          titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
+          
+          titleFilled = true;
+          break;
+        }
       }
 
-      // 填入内容到span元素
-      const contentSpan = document.querySelector('p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]');
-      if (contentSpan && data.content) {
-        contentSpan.textContent = data.content;
-        contentSpan.dispatchEvent(new Event('input', { bubbles: true }));
-        contentSpan.dispatchEvent(new Event('change', { bubbles: true }));
+      // 尝试多种选择器填入内容
+      const contentSelectors = [
+        'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
+        'span[data-lexical-text="true"]',
+        '[data-lexical-text="true"]',
+        '.DraftEditor-editorContainer [data-lexical-text="true"]'
+      ];
+
+      for (const selector of contentSelectors) {
+        const contentSpan = document.querySelector(selector);
+        if (contentSpan && data.content) {
+          console.log('找到内容输入框:', selector);
+          contentSpan.focus();
+          contentSpan.textContent = data.content;
+          
+          // 触发多种事件确保Reddit识别
+          contentSpan.dispatchEvent(new Event('focus', { bubbles: true }));
+          contentSpan.dispatchEvent(new Event('input', { bubbles: true }));
+          contentSpan.dispatchEvent(new Event('change', { bubbles: true }));
+          contentSpan.dispatchEvent(new Event('blur', { bubbles: true }));
+          
+          contentFilled = true;
+          break;
+        }
       }
 
-      this.showNotification('内容已填入Reddit表单', 'success');
+      // 显示填充结果
+      if (titleFilled && contentFilled) {
+        this.showNotification('标题和内容已成功填入Reddit表单', 'success');
+      } else if (titleFilled) {
+        this.showNotification('标题已填入，内容填入失败', 'error');
+      } else if (contentFilled) {
+        this.showNotification('内容已填入，标题填入失败', 'error');
+      } else {
+        this.showNotification('填充失败，请手动复制内容', 'error');
+        console.log('未找到任何可填充的表单元素');
+      }
+
     } catch (error) {
       console.error('填充表单失败:', error);
       this.showNotification('填充表单失败，请手动复制内容', 'error');
