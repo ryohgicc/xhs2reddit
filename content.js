@@ -78,20 +78,15 @@ class XHSNoteExtractor {
   async setImageToClipboard(imageBlob) {
     try {
       if (navigator.clipboard && navigator.clipboard.write) {
-        // 如果是webp格式，转换为jpeg格式
-        let finalBlob = imageBlob;
-        if (imageBlob.type === 'image/webp') {
-          finalBlob = await this.convertWebpToJpeg(imageBlob);
-        }
+        // 统一转换为PNG格式，这是最广泛支持的格式
+        const pngBlob = await this.convertToPng(imageBlob);
         
-        // 确保使用支持的MIME类型
-        const supportedType = finalBlob.type === 'image/png' ? 'image/png' : 'image/jpeg';
         const clipboardItem = new ClipboardItem({
-          [supportedType]: finalBlob
+          'image/png': pngBlob
         });
         
         await navigator.clipboard.write([clipboardItem]);
-        console.log('图片已成功设置到剪贴板，格式:', supportedType);
+        console.log('图片已成功设置到剪贴板，格式: PNG');
         return true;
       } else {
         console.log('浏览器不支持剪贴板API');
@@ -103,8 +98,8 @@ class XHSNoteExtractor {
     }
   }
 
-  // 将WebP格式转换为JPEG格式
-  async convertWebpToJpeg(webpBlob) {
+  // 将任意格式图片转换为PNG格式
+  async convertToPng(imageBlob) {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -115,18 +110,23 @@ class XHSNoteExtractor {
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         
-        canvas.toBlob((jpegBlob) => {
-          console.log('WebP转换为JPEG成功，原大小:', webpBlob.size, '新大小:', jpegBlob.size);
-          resolve(jpegBlob);
-        }, 'image/jpeg', 0.9);
+        canvas.toBlob((pngBlob) => {
+          console.log('图片转换为PNG成功，原格式:', imageBlob.type, '原大小:', imageBlob.size, '新大小:', pngBlob.size);
+          resolve(pngBlob);
+        }, 'image/png');
       };
       
       img.onerror = () => {
-        console.error('图片转换失败，使用原格式');
-        resolve(webpBlob);
+        console.error('图片转换失败，创建空白PNG');
+        // 创建一个1x1的透明PNG作为fallback
+        canvas.width = 1;
+        canvas.height = 1;
+        canvas.toBlob((fallbackBlob) => {
+          resolve(fallbackBlob);
+        }, 'image/png');
       };
       
-      img.src = URL.createObjectURL(webpBlob);
+      img.src = URL.createObjectURL(imageBlob);
     });
   }
 
