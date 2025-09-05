@@ -194,30 +194,45 @@ class XHSNoteExtractor {
       }
 
       // 尝试多种选择器填入内容
-      const contentSelectors = [
-        'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
-        'span[data-lexical-text="true"]',
-        '[data-lexical-text="true"]',
-        '.DraftEditor-editorContainer [data-lexical-text="true"]'
-      ];
+       const contentSelectors = [
+         'div[data-lexical-editor="true"][contenteditable="true"]',
+         'div[name="body"][contenteditable="true"]',
+         'div[role="textbox"][contenteditable="true"]',
+         'div[aria-label*="正文文本"][contenteditable="true"]',
+         'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
+         'span[data-lexical-text="true"]',
+         '[data-lexical-text="true"]'
+       ];
 
       for (const selector of contentSelectors) {
-        const contentSpan = document.querySelector(selector);
-        if (contentSpan && data.content) {
-          console.log('找到内容输入框:', selector);
-          contentSpan.focus();
-          contentSpan.textContent = data.content;
-          
-          // 触发多种事件确保Reddit识别
-          contentSpan.dispatchEvent(new Event('focus', { bubbles: true }));
-          contentSpan.dispatchEvent(new Event('input', { bubbles: true }));
-          contentSpan.dispatchEvent(new Event('change', { bubbles: true }));
-          contentSpan.dispatchEvent(new Event('blur', { bubbles: true }));
-          
-          contentFilled = true;
-          break;
-        }
-      }
+         const contentElement = document.querySelector(selector);
+         if (contentElement && data.content) {
+           console.log('找到内容输入框:', selector);
+           contentElement.focus();
+           
+           // 对于contenteditable的div，需要特殊处理
+           if (contentElement.contentEditable === 'true') {
+             // 清空现有内容并插入新内容
+             contentElement.innerHTML = '';
+             const paragraph = document.createElement('p');
+             paragraph.className = 'first:mt-0 last:mb-0';
+             paragraph.textContent = data.content;
+             contentElement.appendChild(paragraph);
+           } else {
+             // 对于普通元素
+             contentElement.textContent = data.content;
+           }
+           
+           // 触发多种事件确保Reddit识别
+           contentElement.dispatchEvent(new Event('focus', { bubbles: true }));
+           contentElement.dispatchEvent(new Event('input', { bubbles: true }));
+           contentElement.dispatchEvent(new Event('change', { bubbles: true }));
+           contentElement.dispatchEvent(new Event('blur', { bubbles: true }));
+           
+           contentFilled = true;
+           break;
+         }
+       }
 
       // 显示填充结果
       if (titleFilled && contentFilled) {
