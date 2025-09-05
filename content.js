@@ -9,7 +9,16 @@ class XHSNoteExtractor {
   }
 
   init() {
-    this.createPanel();
+    // 检测当前页面类型
+    if (this.isRedditSubmitPage()) {
+      this.createRedditPanel();
+    } else {
+      this.createPanel();
+    }
+  }
+
+  isRedditSubmitPage() {
+    return window.location.href.includes('reddit.com') && window.location.href.includes('/submit/');
   }
 
 
@@ -67,6 +76,102 @@ class XHSNoteExtractor {
     header.addEventListener('mousedown', (e) => this.handleDrag(e));
   }
 
+  async createRedditPanel() {
+    if (document.querySelector('.xhs-extractor-panel')) return;
+
+    // 从存储中获取上次提取的数据
+    const lastExtractedData = await this.getStoredData();
+    
+    this.panel = document.createElement('div');
+    this.panel.className = 'xhs-extractor-panel';
+    
+    if (lastExtractedData) {
+      // 显示上次提取的内容
+      this.panel.innerHTML = `
+        <div class="xhs-extractor-header">
+          <h3 class="xhs-extractor-title">小红书笔记内容</h3>
+          <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+        <div class="xhs-extractor-result">
+          <div class="xhs-extractor-info">
+            <div class="xhs-extractor-info-item">
+              <span class="xhs-extractor-info-label">标题:</span>
+              <span class="xhs-extractor-info-value">${lastExtractedData.title}</span>
+            </div>
+            <div class="xhs-extractor-info-item">
+              <span class="xhs-extractor-info-label">作者:</span>
+              <span class="xhs-extractor-info-value">${lastExtractedData.author || '-'}</span>
+            </div>
+            <div class="xhs-extractor-info-item">
+              <span class="xhs-extractor-info-label">内容:</span>
+              <div class="xhs-extractor-content-preview">${this.truncateText(lastExtractedData.content, 200)}</div>
+            </div>
+            <div class="xhs-extractor-info-item">
+              <span class="xhs-extractor-info-label">图片:</span>
+              <span class="xhs-extractor-info-value">${lastExtractedData.stats.imageCount} 张</span>
+            </div>
+          </div>
+          <button class="xhs-extractor-download" id="reddit-download-btn">使用此内容</button>
+        </div>
+      `;
+    } else {
+      // 显示提示语
+      this.panel.innerHTML = `
+        <div class="xhs-extractor-header">
+          <h3 class="xhs-extractor-title">小红书笔记搬运助手</h3>
+          <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+        </div>
+        <div class="xhs-extractor-content">
+          <div class="xhs-extractor-tip">
+            <p>请先到小红书复制一份笔记</p>
+            <p>然后回到这里使用提取的内容</p>
+          </div>
+        </div>
+      `;
+    }
+
+    document.body.appendChild(this.panel);
+    this.setupRedditPanelEvents(lastExtractedData);
+  }
+
+  setupRedditPanelEvents(data) {
+    const header = this.panel.querySelector('.xhs-extractor-header');
+    const downloadBtn = this.panel.querySelector('#reddit-download-btn');
+    
+    header.addEventListener('mousedown', (e) => this.handleDrag(e));
+    
+    if (downloadBtn && data) {
+      downloadBtn.addEventListener('click', () => this.downloadData(data));
+    }
+  }
+
+  truncateText(text, maxLength) {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  }
+
+  async getStoredData() {
+    try {
+      return new Promise((resolve) => {
+        chrome.storage.local.get(['lastExtractedNote'], (result) => {
+          resolve(result.lastExtractedNote || null);
+        });
+      });
+    } catch (error) {
+      console.error('获取存储数据失败:', error);
+      return null;
+    }
+  }
+
+  async saveDataToStorage(data) {
+    try {
+      chrome.storage.local.set({ lastExtractedNote: data });
+    } catch (error) {
+      console.error('保存数据失败:', error);
+    }
+  }
+
 
 
   async extractNoteContent() {
@@ -108,6 +213,8 @@ class XHSNoteExtractor {
       }
 
       this.displayResults(this.extractedData);
+      // 保存提取的数据到存储中，供Reddit页面使用
+      await this.saveDataToStorage(this.extractedData);
       this.showNotification('笔记提取成功！');
       
     } catch (error) {

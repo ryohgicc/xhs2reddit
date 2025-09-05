@@ -263,3 +263,40 @@
     color: #1a1a1a;
   }
 }
+
+/* Reddit页面特定样式 */
+.xhs-extractor-content-preview {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+  max-height: 120px;
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+  margin-top: 4px;
+}
+
+.xhs-extractor-tip {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
+
+.xhs-extractor-tip p {
+  margin: 8px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.xhs-extractor-tip p:first-child {
+  font-weight: 600;
+  color: #333;
+  font-size: 16px;
+}
+
+.xhs-extractor-tip p:last-child {
+  color: #999;
+  font-size: 13px;
+}
