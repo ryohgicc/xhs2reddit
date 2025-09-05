@@ -169,57 +169,68 @@ class XHSNoteExtractor {
 
       console.log('开始填充Reddit表单，数据:', data);
       console.log('当前页面URL:', window.location.href);
+      
+      // 检测页面类型
+      const isImageSubmit = window.location.href.includes('type=IMAGE');
+      const isTextSubmit = window.location.href.includes('type=TEXT') || window.location.href.includes('/submit') && !isImageSubmit;
+      console.log('页面类型 - 图片提交:', isImageSubmit, '文本提交:', isTextSubmit);
 
       // 等待页面元素加载
       setTimeout(() => {
-        // 尝试多种选择器填入标题
-        const titleSelectors = [
-          'textarea[name="title"]#innerTextArea',
-          '#innerTextArea',
-          'textarea[name="title"]',
-          'textarea[aria-labelledby="fp-input-label"]',
-          'textarea[maxlength="300"]',
-          'textarea[required]'
-        ];
+        // 对于图片提交页面，通常没有标题输入框，只有描述框
+        if (!isImageSubmit) {
+          // 尝试多种选择器填入标题
+          const titleSelectors = [
+            'textarea[name="title"]#innerTextArea',
+            '#innerTextArea',
+            'textarea[name="title"]',
+            'textarea[aria-labelledby="fp-input-label"]',
+            'textarea[maxlength="300"]',
+            'textarea[required]'
+          ];
 
-        console.log('查找标题输入框...');
-        for (const selector of titleSelectors) {
-          const titleTextarea = document.querySelector(selector);
-          console.log(`选择器 ${selector}:`, titleTextarea);
-          if (titleTextarea && data.title) {
-            console.log('找到标题输入框:', selector, titleTextarea);
-            
-            // 清空并设置值
-            titleTextarea.value = '';
-            titleTextarea.focus();
-            
-            // 模拟用户输入
-            for (let i = 0; i < data.title.length; i++) {
-              titleTextarea.value += data.title[i];
-              titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+          console.log('查找标题输入框...');
+          for (const selector of titleSelectors) {
+            const titleTextarea = document.querySelector(selector);
+            console.log(`选择器 ${selector}:`, titleTextarea);
+            if (titleTextarea && data.title) {
+              console.log('找到标题输入框:', selector, titleTextarea);
+              
+              // 清空并设置值
+              titleTextarea.value = '';
+              titleTextarea.focus();
+              
+              // 模拟用户输入
+              for (let i = 0; i < data.title.length; i++) {
+                titleTextarea.value += data.title[i];
+                titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+              
+              // 触发各种事件
+              titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+              titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
+              
+              console.log('标题填充完成，当前值:', titleTextarea.value);
+              titleFilled = true;
+              break;
             }
-            
-            // 触发各种事件
-            titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-            titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
-            
-            console.log('标题填充完成，当前值:', titleTextarea.value);
-            titleFilled = true;
-            break;
           }
-        }
 
-        if (!titleFilled) {
-          console.log('未找到标题输入框，尝试查找所有textarea元素:');
-          const allTextareas = document.querySelectorAll('textarea');
-          allTextareas.forEach((textarea, index) => {
-            console.log(`Textarea ${index}:`, textarea, {
-              name: textarea.name,
-              id: textarea.id,
-              className: textarea.className,
-              placeholder: textarea.placeholder
+          if (!titleFilled) {
+            console.log('未找到标题输入框，尝试查找所有textarea元素:');
+            const allTextareas = document.querySelectorAll('textarea');
+            allTextareas.forEach((textarea, index) => {
+              console.log(`Textarea ${index}:`, textarea, {
+                name: textarea.name,
+                id: textarea.id,
+                className: textarea.className,
+                placeholder: textarea.placeholder
+              });
             });
-          });
+          }
+        } else {
+          console.log('图片提交页面，跳过标题填充');
+          titleFilled = true; // 对于图片页面，标题不是必需的
         }
 
         // 尝试多种选择器填入内容
@@ -239,16 +250,32 @@ class XHSNoteExtractor {
           console.log(`选择器 ${selector}:`, contentElement);
           if (contentElement && data.content) {
             console.log('找到内容输入框:', selector, contentElement);
+            
+            // 聚焦元素
             contentElement.focus();
             
-            // 对于contenteditable的div，需要特殊处理
+            // 对于contenteditable的div，使用更可靠的方法
             if (contentElement.contentEditable === 'true') {
-              // 清空现有内容并插入新内容
-              contentElement.innerHTML = '';
-              const paragraph = document.createElement('p');
-              paragraph.className = 'first:mt-0 last:mb-0';
-              paragraph.textContent = data.content;
-              contentElement.appendChild(paragraph);
+              // 方法1: 使用execCommand (兼容性更好)
+              try {
+                // 选中所有内容并删除
+                document.execCommand('selectAll', false, null);
+                document.execCommand('delete', false, null);
+                
+                // 插入新内容
+                document.execCommand('insertText', false, data.content);
+                console.log('使用execCommand填充内容成功');
+              } catch (e) {
+                console.log('execCommand失败，尝试其他方法:', e);
+                
+                // 方法2: 直接设置innerHTML
+                contentElement.innerHTML = '';
+                const paragraph = document.createElement('p');
+                paragraph.className = 'first:mt-0 last:mb-0';
+                paragraph.textContent = data.content;
+                contentElement.appendChild(paragraph);
+                console.log('使用innerHTML方法填充内容');
+              }
             } else {
               // 对于普通元素
               contentElement.textContent = data.content;
@@ -260,7 +287,11 @@ class XHSNoteExtractor {
             contentElement.dispatchEvent(new Event('change', { bubbles: true }));
             contentElement.dispatchEvent(new Event('blur', { bubbles: true }));
             
-            console.log('内容填充完成');
+            // 额外触发键盘事件
+            contentElement.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+            contentElement.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+            
+            console.log('内容填充完成，当前内容:', contentElement.textContent || contentElement.innerHTML);
             contentFilled = true;
             break;
           }
