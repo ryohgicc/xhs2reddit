@@ -10,12 +10,14 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://www.xiaohongshu.com/*"
+    "https://www.xiaohongshu.com/*",
+    "https://www.reddit.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://www.xiaohongshu.com/*"
+        "https://www.xiaohongshu.com/*",
+        "https://www.reddit.com/*/submit/*"
       ],
       "js": [
         "content.js"
@@ -42,7 +44,8 @@
         "styles/*"
       ],
       "matches": [
-        "https://www.xiaohongshu.com/*"
+        "https://www.xiaohongshu.com/*",
+        "https://www.reddit.com/*"
       ]
     }
   ]
