@@ -198,32 +198,30 @@ class XHSNoteExtractor {
             titleTextarea.focus();
             titleTextarea.value = '';
             
-            // 先输入一个字符来激活页面状态
-            titleTextarea.value = 'a';
-            titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            
-            // 等待50ms让页面状态更新
-            setTimeout(() => {
-              // 清空并填入真正的内容
-              titleTextarea.value = '';
+            // 根据页面类型决定填入什么内容
+            const contentToFill = isImageSubmit ? data.content : data.title;
+            if (contentToFill) {
+              // 直接设置值
+              titleTextarea.value = contentToFill;
               
-              // 根据页面类型决定填入什么内容
-              const contentToFill = isImageSubmit ? data.content : data.title;
-              if (contentToFill) {
-                // 逐字符输入
-                for (let i = 0; i < contentToFill.length; i++) {
-                  titleTextarea.value += contentToFill[i];
-                  titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                
-                // 触发各种事件
-                titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-                titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
-                
-                console.log('内容填充完成，当前值:', titleTextarea.value);
-                console.log('填充的内容类型:', isImageSubmit ? '描述内容' : '标题');
-              }
-            }, 50);
+              // 触发各种事件确保Reddit识别
+              titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+              titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+              titleTextarea.dispatchEvent(new Event('keyup', { bubbles: true }));
+              titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
+              
+              // 额外触发键盘事件
+              const keyboardEvent = new KeyboardEvent('keydown', {
+                bubbles: true,
+                cancelable: true,
+                key: 'a',
+                code: 'KeyA'
+              });
+              titleTextarea.dispatchEvent(keyboardEvent);
+              
+              console.log('内容填充完成，当前值:', titleTextarea.value);
+              console.log('填充的内容类型:', isImageSubmit ? '描述内容' : '标题');
+            }
             
             titleFilled = true;
             contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
