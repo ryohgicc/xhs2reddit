@@ -40,20 +40,34 @@ class XHSNoteExtractor {
     try {
       console.log('下载图片:', imageUrl);
       
-      const response = await fetch(imageUrl, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      // 使用chrome.runtime.sendMessage发送到background script处理CORS
+      return new Promise((resolve) => {
+        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+          chrome.runtime.sendMessage(
+            { action: 'downloadImage', url: imageUrl },
+            (response) => {
+              if (response && response.success) {
+                // 将base64转换为Blob
+                const byteCharacters = atob(response.data.split(',')[1]);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: response.contentType || 'image/jpeg' });
+                console.log('图片下载成功，大小:', blob.size, 'bytes');
+                resolve(blob);
+              } else {
+                console.error('Background script下载失败:', response?.error);
+                resolve(null);
+              }
+            }
+          );
+        } else {
+          console.error('Chrome扩展API不可用');
+          resolve(null);
         }
       });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const blob = await response.blob();
-      console.log('图片下载成功，大小:', blob.size, 'bytes');
-      return blob;
     } catch (error) {
       console.error('下载图片失败:', error);
       return null;
