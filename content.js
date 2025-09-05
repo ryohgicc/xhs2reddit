@@ -143,91 +143,33 @@ class XHSNoteExtractor {
     if (downloadBtn && data) {
       downloadBtn.addEventListener('click', () => {
         this.fillRedditForm(data);
-        this.showNotification('内容已填入Reddit表单', 'success');
+        this.downloadData(data);
       });
     }
   }
 
   fillRedditForm(data) {
-    // 填入标题
-    const titleTextarea = document.querySelector('textarea[name="title"]#innerTextArea');
-    if (titleTextarea && data.title) {
-      titleTextarea.value = data.title;
-      titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-      titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    // 填入正文
-    const bodyDiv = document.querySelector('div[name="body"][contenteditable="true"]');
-    if (bodyDiv && data.content) {
-      // 清空现有内容
-      bodyDiv.innerHTML = '';
-      
-      // 创建新的段落元素
-      const paragraph = document.createElement('p');
-      paragraph.className = 'first:mt-0 last:mb-0';
-      
-      const span = document.createElement('span');
-      span.setAttribute('data-lexical-text', 'true');
-      span.textContent = data.content;
-      
-      paragraph.appendChild(span);
-      bodyDiv.appendChild(paragraph);
-      
-      // 触发输入事件
-      bodyDiv.dispatchEvent(new Event('input', { bubbles: true }));
-      bodyDiv.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    // 处理图片上传（如果有图片）
-    if (data.images && data.images.length > 0) {
-      this.handleImageUpload(data.images);
-    }
-  }
-
-  async handleImageUpload(images) {
-    const uploadButton = document.querySelector('#device-upload-button');
-    if (!uploadButton) {
-      this.showNotification('未找到图片上传按钮，请手动上传图片', 'warning');
-      return;
-    }
-
     try {
-      // 下载并转换图片为File对象
-      const files = [];
-      for (let i = 0; i < Math.min(images.length, 5); i++) { // 限制最多5张图片
-        const imageUrl = images[i];
-        try {
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          const file = new File([blob], `image_${i + 1}.jpg`, { type: 'image/jpeg' });
-          files.push(file);
-        } catch (error) {
-          console.error(`下载图片失败: ${imageUrl}`, error);
-        }
+      // 填入标题到textarea
+      const titleTextarea = document.querySelector('textarea[name="title"]#innerTextArea');
+      if (titleTextarea && data.title) {
+        titleTextarea.value = data.title;
+        titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
       }
 
-      if (files.length > 0) {
-        // 创建文件输入事件
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.multiple = true;
-        fileInput.accept = 'image/*';
-        
-        // 模拟文件选择
-        Object.defineProperty(fileInput, 'files', {
-          value: files,
-          writable: false
-        });
-
-        // 触发上传按钮点击
-        uploadButton.click();
-        
-        this.showNotification(`已准备${files.length}张图片，请在弹出的对话框中确认上传`, 'info');
+      // 填入内容到span元素
+      const contentSpan = document.querySelector('p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]');
+      if (contentSpan && data.content) {
+        contentSpan.textContent = data.content;
+        contentSpan.dispatchEvent(new Event('input', { bubbles: true }));
+        contentSpan.dispatchEvent(new Event('change', { bubbles: true }));
       }
+
+      this.showNotification('内容已填入Reddit表单', 'success');
     } catch (error) {
-      console.error('处理图片上传失败:', error);
-      this.showNotification('图片处理失败，请手动上传', 'error');
+      console.error('填充表单失败:', error);
+      this.showNotification('填充表单失败，请手动复制内容', 'error');
     }
   }
 
