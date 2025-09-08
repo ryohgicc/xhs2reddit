@@ -516,8 +516,8 @@ class XHSNoteExtractor {
         if (titleTextarea) {
           console.log("找到输入框:", "innerTextArea", titleTextarea);
 
-          // 根据页面类型决定填入什么内容
-          const contentToFill = isImageSubmit ? data.content : data.title;
+          // Reddit标题字段应该始终填入小红书笔记的标题
+          const contentToFill = data.title;
           if (contentToFill) {
             // 根据元素类型选择填充方法
             if (
