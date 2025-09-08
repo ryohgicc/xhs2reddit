@@ -566,7 +566,8 @@ class XHSNoteExtractor {
           }
 
           titleFilled = true;
-          contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
+          // 不再假设图片页面的标题框就是内容框，让后续逻辑处理内容填充
+          contentFilled = false;
         }
 
         if (!titleFilled) {
@@ -582,8 +583,8 @@ class XHSNoteExtractor {
           });
         }
 
-        // 如果没有填充成功且不是图片页面，尝试填充内容到其他元素
-        if (!contentFilled && !isImageSubmit) {
+        // 尝试填充内容到Reddit内容文本框（适用于所有页面类型）
+        if (!contentFilled) {
           // 尝试多种选择器填入内容
           const contentSelectors = [
             'div[slot="rte"][contenteditable="true"]',
