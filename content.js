@@ -566,8 +566,7 @@ class XHSNoteExtractor {
           }
 
           titleFilled = true;
-          // 不再假设图片页面的标题框就是内容框，让后续逻辑处理内容填充
-          contentFilled = false;
+          contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
         }
 
         if (!titleFilled) {
@@ -583,10 +582,11 @@ class XHSNoteExtractor {
           });
         }
 
-        // 尝试填充内容到Reddit内容文本框（适用于所有页面类型）
+        // 尝试填充内容到Reddit正文区域（无论什么页面类型都需要填充正文）
         if (!contentFilled) {
-          // 尝试多种选择器填入内容
+          // 尝试多种选择器填入内容，优先匹配Reddit正文区域
           const contentSelectors = [
+            'div[slot="rte"][aria-label*="正文文本"][contenteditable="true"]',
             'div[slot="rte"][contenteditable="true"]',
             'div[aria-label*="正文文本"][contenteditable="true"]',
             'div[data-lexical-editor="true"][contenteditable="true"]',
@@ -624,16 +624,30 @@ class XHSNoteExtractor {
                 } catch (e) {
                   console.log("execCommand失败，尝试其他方法:", e);
 
-                  // 方法2: 直接构建正确的DOM结构
+                  // 方法2: 直接构建正确的DOM结构，适配Reddit Lexical编辑器
                   contentElement.innerHTML = "";
-                  const paragraph = document.createElement("p");
-                  paragraph.className = "first:mt-0 last:mb-0";
-                  const span = document.createElement("span");
-                  span.setAttribute("data-lexical-text", "true");
-                  span.textContent = data.content;
-                  paragraph.appendChild(span);
-                  contentElement.appendChild(paragraph);
-                  console.log("使用DOM结构方法填充内容");
+                  
+                  // 将内容按行分割，每行创建一个段落
+                  const lines = data.content.split('\n');
+                  lines.forEach((line, index) => {
+                    const paragraph = document.createElement("p");
+                    paragraph.className = "first:mt-0 last:mb-0";
+                    
+                    if (line.trim() === '') {
+                      // 空行处理
+                      paragraph.innerHTML = '<br>';
+                    } else {
+                      // 有内容的行
+                      const span = document.createElement("span");
+                      span.setAttribute("data-lexical-text", "true");
+                      span.textContent = line;
+                      paragraph.appendChild(span);
+                    }
+                    
+                    contentElement.appendChild(paragraph);
+                  });
+                  
+                  console.log("使用DOM结构方法填充内容，共", lines.length, "行");
                 }
 
                 // 额外尝试：模拟用户输入
