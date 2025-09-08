@@ -390,23 +390,33 @@ class XHSNoteExtractor {
 
     if (downloadBtn && data) {
       downloadBtn.addEventListener("click", async () => {
+        // 重新获取最新的存储数据
+        const latestData = await this.getStoredData();
+        const dataToUse = latestData || data;
+        
+        console.log("🔄 使用最新数据:", dataToUse);
+        
         // 填充表单并自动粘贴图片
-        this.fillRedditForm(data);
+        this.fillRedditForm(dataToUse);
         // 同时执行图片粘贴
-        if (data.images && data.images.length > 0) {
-          console.log(`🖼️ 自动开始处理 ${data.images.length} 张图片`);
-          await this.prepareImagesForPasting(data);
+        if (dataToUse.images && dataToUse.images.length > 0) {
+          console.log(`🖼️ 自动开始处理 ${dataToUse.images.length} 张图片`);
+          await this.prepareImagesForPasting(dataToUse);
         }
       });
     }
     if (pasteBtn && data) {
       pasteBtn.addEventListener("click", async () => {
+        // 重新获取最新的存储数据
+        const latestData = await this.getStoredData();
+        const dataToUse = latestData || data;
+        
         console.log("🖼️ 用户点击粘贴图片按钮");
-        console.log("📊 数据:", data);
+        console.log("📊 使用最新数据:", dataToUse);
 
-        if (data.images && data.images.length > 0) {
-          console.log(`🖼️ 开始处理 ${data.images.length} 张图片`);
-          await this.prepareImagesForPasting(data);
+        if (dataToUse.images && dataToUse.images.length > 0) {
+          console.log(`🖼️ 开始处理 ${dataToUse.images.length} 张图片`);
+          await this.prepareImagesForPasting(dataToUse);
         } else {
           console.log("⚠️ 没有图片数据可粘贴");
           this.showNotification("没有图片数据可粘贴", "error");
