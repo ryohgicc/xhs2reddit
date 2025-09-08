@@ -4,72 +4,143 @@ class XHSNoteExtractor {
     this.panel = null;
     this.isExtracting = false;
     this.extractedData = null;
-    
+
     this.init();
   }
 
   // 准备图片用于粘贴
   async prepareImagesForPasting(data) {
     if (!data.images || data.images.length === 0) {
-      console.log('没有图片需要处理');
+      console.log("❌ 没有图片需要处理");
       return;
     }
 
     try {
-      console.log(`开始处理 ${data.images.length} 张图片`);
-      
-      // 下载第一张图片并转换为Blob
-      const firstImage = data.images[0];
-      const imageBlob = await this.downloadImageAsBlob(firstImage.url);
-      
-      if (imageBlob) {
-        // 将图片设置到剪贴板
-        await this.setImageToClipboard(imageBlob);
-        this.showNotification('图片已准备就绪，可以直接粘贴了！', 'success');
-      } else {
-        this.showNotification('图片处理失败，请手动上传', 'error');
+      console.log(`🖼️ 开始处理 ${data.images.length} 张图片`);
+      console.log("📋 图片数据:", data.images);
+
+      // 一次性处理所有图片
+      console.log("🔄 开始批量处理图片...");
+
+      // 下载所有图片并收集blob数据
+      const imageBlobs = [];
+      for (let i = 0; i < data.images.length; i++) {
+        const image = data.images[i];
+        console.log(`\n📸 处理第 ${i + 1}/${data.images.length} 张图片:`);
+        console.log("🔗 图片URL:", image.url);
+
+        try {
+          const blob = await this.downloadImageAsBlob(image.url);
+          if (blob) {
+            // 如果是WebP格式，转换为PNG
+            let finalBlob = blob;
+            if (blob.type === "image/webp") {
+              console.log("🔄 检测到WebP格式，转换为PNG...");
+              finalBlob = await this.convertToPng(blob);
+            }
+
+            imageBlobs.push(finalBlob);
+            console.log(`✅ 第 ${i + 1} 张图片下载成功`);
+          } else {
+            console.error(`❌ 第 ${i + 1} 张图片下载失败`);
+          }
+        } catch (error) {
+          console.error(`❌ 第 ${i + 1} 张图片处理失败:`, error);
+        }
       }
+
+      if (imageBlobs.length === 0) {
+        console.log("⚠️ 没有成功下载任何图片");
+        this.showNotification("没有成功下载任何图片", "error");
+        return;
+      }
+
+      console.log(`✅ 成功下载 ${imageBlobs.length} 张图片，开始粘贴...`);
+
+      // 将所有图片一次性复制到剪贴板
+      await this.copyMultipleImagesToClipboard(imageBlobs);
+
+      // 执行一次粘贴操作
+      await this.simulatePaste();
+
+      console.log("🎉 所有图片粘贴完成");
+      this.showNotification(
+        `成功粘贴 ${imageBlobs.length} 张图片！`,
+        "success"
+      );
     } catch (error) {
-      console.error('准备图片时出错:', error);
-      this.showNotification('图片处理失败，请手动上传', 'error');
+      console.error("❌ 准备图片时出错:", error);
+      this.showNotification("图片处理失败，请手动上传", "error");
+    }
+  }
+
+  // 批量复制多张图片到剪贴板
+  async copyMultipleImagesToClipboard(imageBlobs) {
+    try {
+      console.log(`🔄 开始批量复制 ${imageBlobs.length} 张图片到剪贴板...`);
+
+      // 创建多个ClipboardItem
+      const clipboardItems = [];
+      for (let i = 0; i < imageBlobs.length; i++) {
+        const blob = imageBlobs[i];
+        const item = new ClipboardItem({
+          [blob.type]: blob,
+        });
+        clipboardItems.push(item);
+        console.log(`✅ 第 ${i + 1} 张图片已添加到剪贴板项目`);
+      }
+
+      // 一次性写入所有图片到剪贴板
+      await navigator.clipboard.write(clipboardItems);
+      console.log(`✅ 成功将 ${imageBlobs.length} 张图片复制到剪贴板`);
+      return true;
+    } catch (error) {
+      console.error("❌ 批量复制图片到剪贴板失败:", error);
+      return false;
     }
   }
 
   // 下载图片为Blob
   async downloadImageAsBlob(imageUrl) {
     try {
-      console.log('下载图片:', imageUrl);
-      
+      console.log("下载图片:", imageUrl);
+
       // 使用chrome.runtime.sendMessage发送到background script处理CORS
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+        if (
+          typeof chrome !== "undefined" &&
+          chrome.runtime &&
+          chrome.runtime.sendMessage
+        ) {
           chrome.runtime.sendMessage(
-            { action: 'downloadImage', url: imageUrl },
+            { action: "downloadImage", url: imageUrl },
             (response) => {
               if (response && response.success) {
                 // 将base64转换为Blob
-                const byteCharacters = atob(response.data.split(',')[1]);
+                const byteCharacters = atob(response.data.split(",")[1]);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
                   byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: response.contentType || 'image/jpeg' });
-                console.log('图片下载成功，大小:', blob.size, 'bytes');
+                const blob = new Blob([byteArray], {
+                  type: response.contentType || "image/jpeg",
+                });
+                console.log("图片下载成功，大小:", blob.size, "bytes");
                 resolve(blob);
               } else {
-                console.error('Background script下载失败:', response?.error);
+                console.error("Background script下载失败:", response?.error);
                 resolve(null);
               }
             }
           );
         } else {
-          console.error('Chrome扩展API不可用');
+          console.error("Chrome扩展API不可用");
           resolve(null);
         }
       });
     } catch (error) {
-      console.error('下载图片失败:', error);
+      console.error("下载图片失败:", error);
       return null;
     }
   }
@@ -77,23 +148,43 @@ class XHSNoteExtractor {
   // 将图片设置到剪贴板
   async setImageToClipboard(imageBlob) {
     try {
+      console.log("开始设置图片到剪贴板，图片大小:", imageBlob.size, "bytes");
+
       if (navigator.clipboard && navigator.clipboard.write) {
+        console.log("剪贴板API可用，开始转换图片格式");
+
         // 统一转换为PNG格式，这是最广泛支持的格式
         const pngBlob = await this.convertToPng(imageBlob);
-        
+        console.log("图片转换完成，PNG大小:", pngBlob.size, "bytes");
+
         const clipboardItem = new ClipboardItem({
-          'image/png': pngBlob
+          "image/png": pngBlob,
         });
-        
+
+        console.log("开始写入剪贴板...");
         await navigator.clipboard.write([clipboardItem]);
-        console.log('图片已成功设置到剪贴板，格式: PNG');
+        console.log("图片已成功设置到剪贴板，格式: PNG");
+
+        // 验证剪贴板内容
+        try {
+          const clipboardItems = await navigator.clipboard.read();
+          console.log("剪贴板验证成功，包含", clipboardItems.length, "个项目");
+          for (let i = 0; i < clipboardItems.length; i++) {
+            const types = clipboardItems[i].types;
+            console.log(`剪贴板项目 ${i}:`, types);
+          }
+        } catch (verifyError) {
+          console.log("剪贴板验证失败，但写入可能成功:", verifyError);
+        }
+
         return true;
       } else {
-        console.log('浏览器不支持剪贴板API');
+        console.log("浏览器不支持剪贴板API");
         return false;
       }
     } catch (error) {
-      console.error('设置剪贴板失败:', error);
+      console.error("设置剪贴板失败:", error);
+      console.error("错误详情:", error.message);
       return false;
     }
   }
@@ -101,31 +192,38 @@ class XHSNoteExtractor {
   // 将任意格式图片转换为PNG格式
   async convertToPng(imageBlob) {
     return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
       const img = new Image();
-      
+
       img.onload = () => {
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-        
+
         canvas.toBlob((pngBlob) => {
-          console.log('图片转换为PNG成功，原格式:', imageBlob.type, '原大小:', imageBlob.size, '新大小:', pngBlob.size);
+          console.log(
+            "图片转换为PNG成功，原格式:",
+            imageBlob.type,
+            "原大小:",
+            imageBlob.size,
+            "新大小:",
+            pngBlob.size
+          );
           resolve(pngBlob);
-        }, 'image/png');
+        }, "image/png");
       };
-      
+
       img.onerror = () => {
-        console.error('图片转换失败，创建空白PNG');
+        console.error("图片转换失败，创建空白PNG");
         // 创建一个1x1的透明PNG作为fallback
         canvas.width = 1;
         canvas.height = 1;
         canvas.toBlob((fallbackBlob) => {
           resolve(fallbackBlob);
-        }, 'image/png');
+        }, "image/png");
       };
-      
+
       img.src = URL.createObjectURL(imageBlob);
     });
   }
@@ -143,7 +241,7 @@ class XHSNoteExtractor {
   setupStorageListener() {
     // 监听存储变化
     chrome.storage.onChanged.addListener((changes, namespace) => {
-      if (namespace === 'local' && changes.lastExtractedNote) {
+      if (namespace === "local" && changes.lastExtractedNote) {
         // 当存储的笔记数据发生变化时，重新创建Reddit面板
         this.createRedditPanel();
       }
@@ -151,16 +249,17 @@ class XHSNoteExtractor {
   }
 
   isRedditSubmitPage() {
-    return window.location.href.includes('reddit.com') && window.location.href.includes('/submit/');
+    return (
+      window.location.href.includes("reddit.com") &&
+      window.location.href.includes("/submit/")
+    );
   }
 
-
-
   createPanel() {
-    if (document.querySelector('.xhs-extractor-panel')) return;
+    if (document.querySelector(".xhs-extractor-panel")) return;
 
-    this.panel = document.createElement('div');
-    this.panel.className = 'xhs-extractor-panel';
+    this.panel = document.createElement("div");
+    this.panel.className = "xhs-extractor-panel";
     this.panel.innerHTML = `
       <div class="xhs-extractor-header">
         <h3 class="xhs-extractor-title">小红书笔记搬运助手</h3>
@@ -199,29 +298,31 @@ class XHSNoteExtractor {
   }
 
   setupPanelEvents() {
-    const extractBtn = this.panel.querySelector('#extract-btn');
-    const downloadBtn = this.panel.querySelector('#download-btn');
-    const header = this.panel.querySelector('.xhs-extractor-header');
+    const extractBtn = this.panel.querySelector("#extract-btn");
+    const downloadBtn = this.panel.querySelector("#download-btn");
+    const header = this.panel.querySelector(".xhs-extractor-header");
 
-    extractBtn.addEventListener('click', () => this.extractNoteContent());
-    downloadBtn.addEventListener('click', () => this.downloadData(this.extractedData));
-    
-    header.addEventListener('mousedown', (e) => this.handleDrag(e));
+    extractBtn.addEventListener("click", () => this.extractNoteContent());
+    downloadBtn.addEventListener("click", () =>
+      this.downloadData(this.extractedData)
+    );
+
+    header.addEventListener("mousedown", (e) => this.handleDrag(e));
   }
 
   async createRedditPanel() {
     // 移除已存在的面板
-    const existingPanel = document.querySelector('.xhs-extractor-panel');
+    const existingPanel = document.querySelector(".xhs-extractor-panel");
     if (existingPanel) {
       existingPanel.remove();
     }
 
     // 从存储中获取上次提取的数据
     const lastExtractedData = await this.getStoredData();
-    
-    this.panel = document.createElement('div');
-    this.panel.className = 'xhs-extractor-panel';
-    
+
+    this.panel = document.createElement("div");
+    this.panel.className = "xhs-extractor-panel";
+
     if (lastExtractedData) {
       // 显示上次提取的内容
       this.panel.innerHTML = `
@@ -233,22 +334,32 @@ class XHSNoteExtractor {
           <div class="xhs-extractor-info">
             <div class="xhs-extractor-info-item">
               <span class="xhs-extractor-info-label">标题:</span>
-              <span class="xhs-extractor-info-value">${lastExtractedData.title}</span>
+              <span class="xhs-extractor-info-value">${
+                lastExtractedData.title
+              }</span>
             </div>
             <div class="xhs-extractor-info-item">
               <span class="xhs-extractor-info-label">作者:</span>
-              <span class="xhs-extractor-info-value">${lastExtractedData.author || '-'}</span>
+              <span class="xhs-extractor-info-value">${
+                lastExtractedData.author || "-"
+              }</span>
             </div>
             <div class="xhs-extractor-info-item">
               <span class="xhs-extractor-info-label">内容:</span>
-              <div class="xhs-extractor-content-preview">${this.truncateText(lastExtractedData.content, 200)}</div>
+              <div class="xhs-extractor-content-preview">${this.truncateText(
+                lastExtractedData.content,
+                200
+              )}</div>
             </div>
             <div class="xhs-extractor-info-item">
               <span class="xhs-extractor-info-label">图片:</span>
-              <span class="xhs-extractor-info-value">${lastExtractedData.stats.imageCount} 张</span>
+              <span class="xhs-extractor-info-value">${
+                lastExtractedData.stats.imageCount
+              } 张</span>
             </div>
           </div>
           <button class="xhs-extractor-download" id="reddit-download-btn">使用此内容</button>
+          <button class="xhs-extractor-download" id="reddit-paste-btn" style="background: #ff6b6b; margin-left: 8px;">📋 粘贴图片</button>
         </div>
       `;
     } else {
@@ -272,120 +383,201 @@ class XHSNoteExtractor {
   }
 
   setupRedditPanelEvents(data) {
-    const header = this.panel.querySelector('.xhs-extractor-header');
-    const downloadBtn = this.panel.querySelector('#reddit-download-btn');
-    
-    header.addEventListener('mousedown', (e) => this.handleDrag(e));
-    
+    const header = this.panel.querySelector(".xhs-extractor-header");
+    const downloadBtn = this.panel.querySelector("#reddit-download-btn");
+    const pasteBtn = this.panel.querySelector("#reddit-paste-btn");
+    header.addEventListener("mousedown", (e) => this.handleDrag(e));
+
     if (downloadBtn && data) {
-      downloadBtn.addEventListener('click', async () => {
+      downloadBtn.addEventListener("click", async () => {
         this.fillRedditForm(data);
         // 下载图片并设置到剪贴板
         await this.prepareImagesForPasting(data);
       });
     }
+    if (pasteBtn && data) {
+      pasteBtn.addEventListener("click", async () => {
+        console.log("🖼️ 用户点击粘贴图片按钮");
+        console.log("📊 数据:", data);
+
+        if (data.images && data.images.length > 0) {
+          console.log(`🖼️ 开始处理 ${data.images.length} 张图片`);
+          await this.prepareImagesForPasting(data);
+        } else {
+          console.log("⚠️ 没有图片数据可粘贴");
+          this.showNotification("没有图片数据可粘贴", "error");
+        }
+      });
+    }
   }
 
   fillRedditForm(data) {
+    console.log("fillRedditForm", data);
     try {
       let titleFilled = false;
       let contentFilled = false;
 
-      console.log('开始填充Reddit表单，数据:', data);
-      console.log('当前页面URL:', window.location.href);
-      
+      console.log("开始填充Reddit表单，数据:", data);
+      console.log("当前页面URL:", window.location.href);
+
       // 检测页面类型
-      const isImageSubmit = window.location.href.includes('type=IMAGE');
-      const isTextSubmit = window.location.href.includes('type=TEXT') || window.location.href.includes('/submit') && !isImageSubmit;
-      console.log('页面类型 - 图片提交:', isImageSubmit, '文本提交:', isTextSubmit);
+      const isImageSubmit = window.location.href.includes("type=IMAGE");
+      const isTextSubmit =
+        window.location.href.includes("type=TEXT") ||
+        (window.location.href.includes("/submit") && !isImageSubmit);
+      console.log(
+        "页面类型 - 图片提交:",
+        isImageSubmit,
+        "文本提交:",
+        isTextSubmit
+      );
 
       // 等待页面元素加载
       setTimeout(() => {
-        // 查找标题输入框（对于图片提交页面，这个输入框实际上是描述框）
-        const titleSelectors = [
-          // 新版Reddit选择器
-          'textarea[placeholder*="Title"]',
-          'textarea[placeholder*="标题"]',
-          'input[placeholder*="Title"]',
-          'input[placeholder*="标题"]',
-          'div[contenteditable="true"][data-testid="post-title-input"]',
-          'div[contenteditable="true"][role="textbox"]',
-          // 通用选择器
-          'textarea[data-testid*="title"]',
-          'input[data-testid*="title"]',
-          'div[data-testid*="title"][contenteditable="true"]',
-          'textarea[aria-label*="title"]',
-          'textarea[aria-label*="Title"]',
-          'input[aria-label*="title"]',
-          'input[aria-label*="Title"]',
-          // 旧版选择器
-          'textarea[name="title"]#innerTextArea',
-          '#innerTextArea',
-          'textarea[name="title"]',
-          'textarea[aria-labelledby="fp-input-label"]',
-          'textarea[maxlength="300"]',
-          'textarea[required]',
-          // 更通用的选择器
-          'textarea:first-of-type',
-          'input[type="text"]:first-of-type'
-        ];
+        console.log("查找标题/描述输入框...");
 
-        console.log('查找标题/描述输入框...');
-        for (const selector of titleSelectors) {
-          const titleTextarea = document.querySelector(selector);
-          console.log(`选择器 ${selector}:`, titleTextarea);
-          if (titleTextarea) {
-              console.log('找到输入框:', selector, titleTextarea);
-              
-              // 根据页面类型决定填入什么内容
-              const contentToFill = isImageSubmit ? data.content : data.title;
-              if (contentToFill) {
-                // 根据元素类型选择填充方法
-                if (titleTextarea.tagName.toLowerCase() === 'div' && titleTextarea.contentEditable === 'true') {
-                  // contenteditable div
-                  titleTextarea.focus();
-                  titleTextarea.textContent = '';
-                  setTimeout(() => {
-                    titleTextarea.textContent = contentToFill;
-                    
-                    // 触发contenteditable事件
-                    titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
-                  }, 100);
-                } else {
-                  // textarea或input
-                  titleTextarea.focus();
-                  titleTextarea.value = '';
-                  setTimeout(() => {
-                    titleTextarea.value = contentToFill;
-                    
-                    // 触发表单事件
-                    titleTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                    titleTextarea.dispatchEvent(new Event('change', { bubbles: true }));
-                    titleTextarea.dispatchEvent(new Event('keyup', { bubbles: true }));
-                    titleTextarea.dispatchEvent(new Event('blur', { bubbles: true }));
-                  }, 100);
-                }
-                
-                console.log('内容填充完成');
-                console.log('填充的内容类型:', isImageSubmit ? '描述内容' : '标题');
+        // 首先尝试直接查找
+        let titleTextarea = document.getElementById("innerTextArea");
+        console.log(`直接查找 innerTextArea:`, titleTextarea);
+
+        // 如果没找到，尝试在Shadow DOM中查找
+        if (!titleTextarea) {
+          console.log("直接查找失败，尝试在Shadow DOM中查找...");
+
+          // 查找所有可能包含Shadow DOM的元素
+          const shadowHosts = document.querySelectorAll(
+            'label, div[class*="label"], div[class*="input"], div[class*="form"], div[class*="field"]'
+          );
+          console.log("找到可能的Shadow DOM宿主元素:", shadowHosts.length);
+
+          // 也尝试查找所有有shadowRoot的元素
+          const allElements = document.querySelectorAll("*");
+          const elementsWithShadow = Array.from(allElements).filter(
+            (el) => el.shadowRoot
+          );
+          console.log("找到所有Shadow DOM元素:", elementsWithShadow.length);
+
+          // 首先检查特定的Shadow DOM宿主元素
+          for (const host of shadowHosts) {
+            if (host.shadowRoot) {
+              console.log("找到Shadow DOM:", host, host.shadowRoot);
+
+              // 在Shadow DOM中查找innerTextArea
+              titleTextarea = host.shadowRoot.getElementById("innerTextArea");
+              if (titleTextarea) {
+                console.log("在Shadow DOM中找到innerTextArea:", titleTextarea);
+                break;
               }
-              
-              titleFilled = true;
-              contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
-              break;
+
+              // 也尝试querySelector
+              titleTextarea = host.shadowRoot.querySelector(
+                'textarea[id="innerTextArea"]'
+              );
+              if (titleTextarea) {
+                console.log(
+                  "通过querySelector在Shadow DOM中找到innerTextArea:",
+                  titleTextarea
+                );
+                break;
+              }
             }
+          }
+
+          // 如果还没找到，检查所有Shadow DOM元素
+          if (!titleTextarea) {
+            console.log("在特定宿主中未找到，检查所有Shadow DOM元素...");
+            for (const host of elementsWithShadow) {
+              console.log("检查Shadow DOM:", host, host.shadowRoot);
+
+              titleTextarea = host.shadowRoot.getElementById("innerTextArea");
+              if (titleTextarea) {
+                console.log(
+                  "在所有Shadow DOM中找到innerTextArea:",
+                  titleTextarea
+                );
+                break;
+              }
+
+              titleTextarea = host.shadowRoot.querySelector(
+                'textarea[id="innerTextArea"]'
+              );
+              if (titleTextarea) {
+                console.log(
+                  "通过querySelector在所有Shadow DOM中找到innerTextArea:",
+                  titleTextarea
+                );
+                break;
+              }
+            }
+          }
+        }
+
+        console.log(`最终找到的 innerTextArea:`, titleTextarea);
+        if (titleTextarea) {
+          console.log("找到输入框:", "innerTextArea", titleTextarea);
+
+          // 根据页面类型决定填入什么内容
+          const contentToFill = isImageSubmit ? data.content : data.title;
+          if (contentToFill) {
+            // 根据元素类型选择填充方法
+            if (
+              titleTextarea.tagName.toLowerCase() === "div" &&
+              titleTextarea.contentEditable === "true"
+            ) {
+              // contenteditable div
+              titleTextarea.focus();
+              titleTextarea.textContent = "";
+              setTimeout(() => {
+                titleTextarea.textContent = contentToFill;
+
+                // 触发contenteditable事件
+                titleTextarea.dispatchEvent(
+                  new Event("input", { bubbles: true })
+                );
+                titleTextarea.dispatchEvent(
+                  new Event("blur", { bubbles: true })
+                );
+              }, 100);
+            } else {
+              // textarea或input
+              titleTextarea.focus();
+              titleTextarea.value = "";
+              setTimeout(() => {
+                titleTextarea.value = contentToFill;
+
+                // 触发表单事件
+                titleTextarea.dispatchEvent(
+                  new Event("input", { bubbles: true })
+                );
+                titleTextarea.dispatchEvent(
+                  new Event("change", { bubbles: true })
+                );
+                titleTextarea.dispatchEvent(
+                  new Event("keyup", { bubbles: true })
+                );
+                titleTextarea.dispatchEvent(
+                  new Event("blur", { bubbles: true })
+                );
+              }, 100);
+            }
+
+            console.log("内容填充完成");
+            console.log("填充的内容类型:", isImageSubmit ? "描述内容" : "标题");
+          }
+
+          titleFilled = true;
+          contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
         }
 
         if (!titleFilled) {
-          console.log('未找到标题输入框，尝试查找所有textarea元素:');
-          const allTextareas = document.querySelectorAll('textarea');
+          console.log("未找到标题输入框，尝试查找所有textarea元素:");
+          const allTextareas = document.querySelectorAll("textarea");
           allTextareas.forEach((textarea, index) => {
             console.log(`Textarea ${index}:`, textarea, {
               name: textarea.name,
               id: textarea.id,
               className: textarea.className,
-              placeholder: textarea.placeholder
+              placeholder: textarea.placeholder,
             });
           });
         }
@@ -401,55 +593,55 @@ class XHSNoteExtractor {
             'div[role="textbox"][contenteditable="true"]',
             'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
             'span[data-lexical-text="true"]',
-            '[data-lexical-text="true"]'
+            '[data-lexical-text="true"]',
           ];
 
-          console.log('查找内容输入框...');
+          console.log("查找内容输入框...");
           for (const selector of contentSelectors) {
             const contentElement = document.querySelector(selector);
             console.log(`选择器 ${selector}:`, contentElement);
             if (contentElement && data.content) {
-              console.log('找到内容输入框:', selector, contentElement);
-              
+              console.log("找到内容输入框:", selector, contentElement);
+
               // 聚焦元素
               contentElement.focus();
-              
+
               // 对于contenteditable的div，使用更可靠的方法
-              if (contentElement.contentEditable === 'true') {
+              if (contentElement.contentEditable === "true") {
                 // 先激活编辑器状态
                 contentElement.focus();
-                
+
                 // 方法1: 使用execCommand (兼容性更好)
                 try {
                   // 选中所有内容并删除
-                  document.execCommand('selectAll', false, null);
-                  document.execCommand('delete', false, null);
-                  
+                  document.execCommand("selectAll", false, null);
+                  document.execCommand("delete", false, null);
+
                   // 插入新内容
-                  document.execCommand('insertText', false, data.content);
-                  console.log('使用execCommand填充内容成功');
+                  document.execCommand("insertText", false, data.content);
+                  console.log("使用execCommand填充内容成功");
                 } catch (e) {
-                  console.log('execCommand失败，尝试其他方法:', e);
-                  
+                  console.log("execCommand失败，尝试其他方法:", e);
+
                   // 方法2: 直接构建正确的DOM结构
-                  contentElement.innerHTML = '';
-                  const paragraph = document.createElement('p');
-                  paragraph.className = 'first:mt-0 last:mb-0';
-                  const span = document.createElement('span');
-                  span.setAttribute('data-lexical-text', 'true');
+                  contentElement.innerHTML = "";
+                  const paragraph = document.createElement("p");
+                  paragraph.className = "first:mt-0 last:mb-0";
+                  const span = document.createElement("span");
+                  span.setAttribute("data-lexical-text", "true");
                   span.textContent = data.content;
                   paragraph.appendChild(span);
                   contentElement.appendChild(paragraph);
-                  console.log('使用DOM结构方法填充内容');
+                  console.log("使用DOM结构方法填充内容");
                 }
-                
+
                 // 额外尝试：模拟用户输入
                 setTimeout(() => {
-                  const inputEvent = new InputEvent('input', {
+                  const inputEvent = new InputEvent("input", {
                     bubbles: true,
                     cancelable: true,
-                    inputType: 'insertText',
-                    data: data.content
+                    inputType: "insertText",
+                    data: data.content,
                   });
                   contentElement.dispatchEvent(inputEvent);
                 }, 10);
@@ -457,33 +649,50 @@ class XHSNoteExtractor {
                 // 对于普通元素
                 contentElement.textContent = data.content;
               }
-              
+
               // 触发多种事件确保Reddit识别
-              contentElement.dispatchEvent(new Event('focus', { bubbles: true }));
-              contentElement.dispatchEvent(new Event('input', { bubbles: true }));
-              contentElement.dispatchEvent(new Event('change', { bubbles: true }));
-              contentElement.dispatchEvent(new Event('blur', { bubbles: true }));
-              
+              contentElement.dispatchEvent(
+                new Event("focus", { bubbles: true })
+              );
+              contentElement.dispatchEvent(
+                new Event("input", { bubbles: true })
+              );
+              contentElement.dispatchEvent(
+                new Event("change", { bubbles: true })
+              );
+              contentElement.dispatchEvent(
+                new Event("blur", { bubbles: true })
+              );
+
               // 额外触发键盘事件
-              contentElement.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
-              contentElement.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-              
-              console.log('内容填充完成，当前内容:', contentElement.textContent || contentElement.innerHTML);
+              contentElement.dispatchEvent(
+                new KeyboardEvent("keydown", { bubbles: true })
+              );
+              contentElement.dispatchEvent(
+                new KeyboardEvent("keyup", { bubbles: true })
+              );
+
+              console.log(
+                "内容填充完成，当前内容:",
+                contentElement.textContent || contentElement.innerHTML
+              );
               contentFilled = true;
               break;
             }
           }
 
           if (!contentFilled) {
-            console.log('未找到内容输入框，尝试查找所有contenteditable元素:');
-            const allContentEditable = document.querySelectorAll('[contenteditable="true"]');
+            console.log("未找到内容输入框，尝试查找所有contenteditable元素:");
+            const allContentEditable = document.querySelectorAll(
+              '[contenteditable="true"]'
+            );
             allContentEditable.forEach((element, index) => {
               console.log(`ContentEditable ${index}:`, element, {
                 tagName: element.tagName,
                 name: element.name,
                 id: element.id,
                 className: element.className,
-                ariaLabel: element.getAttribute('aria-label')
+                ariaLabel: element.getAttribute("aria-label"),
               });
             });
           }
@@ -491,36 +700,35 @@ class XHSNoteExtractor {
 
         // 显示填充结果
         if (titleFilled && contentFilled) {
-          this.showNotification('内容已成功填入Reddit表单', 'success');
+          this.showNotification("内容已成功填入Reddit表单", "success");
         } else if (titleFilled) {
-          this.showNotification('内容已填入，请检查是否正确', 'success');
+          this.showNotification("内容已填入，请检查是否正确", "success");
         } else {
-          this.showNotification('填充失败，请手动复制内容', 'error');
-          console.log('未找到任何可填充的表单元素');
+          this.showNotification("填充失败，请手动复制内容", "error");
+          console.log("未找到任何可填充的表单元素");
         }
       }, 500);
-
     } catch (error) {
-      console.error('填充表单失败:', error);
-      this.showNotification('填充表单失败，请手动复制内容', 'error');
+      console.error("填充表单失败:", error);
+      this.showNotification("填充表单失败，请手动复制内容", "error");
     }
   }
 
   truncateText(text, maxLength) {
-    if (!text) return '-';
+    if (!text) return "-";
     if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+    return text.substring(0, maxLength) + "...";
   }
 
   async getStoredData() {
     try {
       return new Promise((resolve) => {
-        chrome.storage.local.get(['lastExtractedNote'], (result) => {
+        chrome.storage.local.get(["lastExtractedNote"], (result) => {
           resolve(result.lastExtractedNote || null);
         });
       });
     } catch (error) {
-      console.error('获取存储数据失败:', error);
+      console.error("获取存储数据失败:", error);
       return null;
     }
   }
@@ -529,58 +737,58 @@ class XHSNoteExtractor {
     try {
       chrome.storage.local.set({ lastExtractedNote: data });
     } catch (error) {
-      console.error('保存数据失败:', error);
+      console.error("保存数据失败:", error);
     }
   }
 
-
-
   async extractNoteContent() {
     if (this.isExtracting) return;
-    
+
     this.isExtracting = true;
-    const extractBtn = this.panel.querySelector('#extract-btn');
+    const extractBtn = this.panel.querySelector("#extract-btn");
     const originalText = extractBtn.textContent;
-    
-    extractBtn.textContent = '提取中...';
+
+    extractBtn.textContent = "提取中...";
     extractBtn.disabled = true;
 
     try {
       await this.waitForContent();
-      
+
       const title = this.getNoteTitle();
       const content = this.getNoteContent();
       const images = this.getNoteImages();
       const author = this.getAuthorInfo();
-      
+
       this.extractedData = {
-        title: title || '无标题',
+        title: title || "无标题",
         author: author,
         content: content,
         images: images,
         url: window.location.href,
         extractedAt: new Date().toISOString(),
-        platform: 'xiaohongshu',
-        version: '1.0.0',
+        platform: "xiaohongshu",
+        version: "1.0.0",
         stats: {
           wordCount: content ? content.length : 0,
-          imageCount: images.length
-        }
+          imageCount: images.length,
+        },
       };
 
       // 显示过滤信息
       if (images.length === 0) {
-        this.showNotification('未检测到符合标准格式的笔记图片（sns-webpic-qc.xhscdn.com/.../notes_pre_post/...）。请在笔记图片区域滑动/预览后重试。', 'warning');
+        this.showNotification(
+          "未检测到符合标准格式的笔记图片（sns-webpic-qc.xhscdn.com/.../notes_pre_post/...）。请在笔记图片区域滑动/预览后重试。",
+          "warning"
+        );
       }
 
       this.displayResults(this.extractedData);
       // 保存提取的数据到存储中，供Reddit页面使用
       await this.saveDataToStorage(this.extractedData);
-      this.showNotification('笔记提取成功！');
-      
+      this.showNotification("笔记提取成功！");
     } catch (error) {
-      console.error('提取失败:', error);
-      this.showNotification('提取失败，请刷新页面重试', 'error');
+      console.error("提取失败:", error);
+      this.showNotification("提取失败，请刷新页面重试", "error");
     } finally {
       this.isExtracting = false;
       extractBtn.textContent = originalText;
@@ -589,67 +797,79 @@ class XHSNoteExtractor {
   }
 
   getNoteTitle() {
-    const selectors = [
-      '#detail-title',
-      'h1[data-testid="note-title"]',
-      '.note-title',
-      '.title',
-      '[class*="title"]',
-      'h1',
-      '.content-title',
-      '.note-content h1'
-    ];
+    try {
+      const selectors = [
+        "#detail-title",
+        'h1[data-testid="note-title"]',
+        ".note-title",
+        ".title",
+        '[class*="title"]',
+        "h1",
+        ".content-title",
+        ".note-content h1",
+      ];
 
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim()) {
-        return element.textContent.trim();
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent && element.textContent.trim()) {
+          return element.textContent.trim();
+        }
       }
-    }
 
-    const headings = document.querySelectorAll('h1, h2, h3');
-    for (const heading of headings) {
-      if (heading.textContent.trim().length > 5) {
-        return heading.textContent.trim();
+      const headings = document.querySelectorAll("h1, h2, h3");
+      for (const heading of headings) {
+        if (heading.textContent && heading.textContent.trim().length > 5) {
+          return heading.textContent.trim();
+        }
       }
-    }
 
-    return document.title.replace(' - 小红书', '').trim();
+      return document.title
+        ? document.title.replace(" - 小红书", "").trim()
+        : "无标题";
+    } catch (error) {
+      console.error("getNoteTitle出错:", error);
+      return "无标题";
+    }
   }
 
   getNoteContent() {
-    const selectors = [
-      '.note-text',
-      '.note-content .content',
-      '.note-content',
-      '.content',
-      '[data-testid="note-content"]',
-      '.detail-content',
-      '.rich-content',
-      '.note-detail-content',
-      '.content-container'
-    ];
+    try {
+      const selectors = [
+        ".note-text",
+        ".note-content .content",
+        ".note-content",
+        ".content",
+        '[data-testid="note-content"]',
+        ".detail-content",
+        ".rich-content",
+        ".note-detail-content",
+        ".content-container",
+      ];
 
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element && element.textContent.trim()) {
-        return element.textContent.trim();
+      for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element && element.textContent && element.textContent.trim()) {
+          return element.textContent.trim();
+        }
       }
-    }
 
-    const paragraphs = document.querySelectorAll('p, .paragraph');
-    let content = '';
-    for (const p of paragraphs) {
-      if (p.textContent.trim()) {
-        content += p.textContent.trim() + '\n\n';
+      const paragraphs = document.querySelectorAll("p, .paragraph");
+      let content = "";
+      for (const p of paragraphs) {
+        if (p.textContent && p.textContent.trim()) {
+          content += p.textContent.trim() + "\n\n";
+        }
       }
-    }
 
-    return content.trim();
+      return content.trim();
+    } catch (error) {
+      console.error("getNoteContent出错:", error);
+      return "";
+    }
   }
 
   cleanImageUrl(url) {
-    if (!url) return '';
+    if (!url) return "";
     return url.trim();
   }
 
@@ -657,27 +877,29 @@ class XHSNoteExtractor {
     // 从笔记正文中的实际图片元素提取图片
     const images = [];
     const seenUrls = new Set();
-    
+
     // 小红书笔记图片的选择器 - 只选择笔记详情页的大图
-    const imageSelectors = [
-      'img.note-slider-img'
-    ];
-    
+    const imageSelectors = ["img.note-slider-img"];
+
     let imageIndex = 1;
-    
+
     // 查找所有可能的图片元素
-    imageSelectors.forEach(selector => {
+    imageSelectors.forEach((selector) => {
       const imgElements = document.querySelectorAll(selector);
       imgElements.forEach((img) => {
-        let src = img.src || img.getAttribute('data-src') || img.getAttribute('srcset');
+        let src =
+          img.src || img.getAttribute("data-src") || img.getAttribute("srcset");
         if (src) {
           // 处理srcset
-          if (src.includes(',')) {
-            src = src.split(',')[0].split(' ')[0];
+          if (src.includes(",")) {
+            src = src.split(",")[0].split(" ")[0];
           }
-          
+
           // 保留所有小红书CDN的图片
-          if (src.includes('sns-webpic-qc.xhscdn.com') || src.includes('xhscdn.com')) {
+          if (
+            src.includes("sns-webpic-qc.xhscdn.com") ||
+            src.includes("xhscdn.com")
+          ) {
             const cleanUrl = this.cleanImageUrl(src);
             // 放宽条件：提取所有小红书CDN的图片，不限制路径和格式
             if (cleanUrl && !seenUrls.has(cleanUrl)) {
@@ -686,7 +908,7 @@ class XHSNoteExtractor {
                 url: cleanUrl,
                 alt: img.alt || `小红书图片${imageIndex++}`,
                 width: img.naturalWidth || 0,
-                height: img.naturalHeight || 0
+                height: img.naturalHeight || 0,
               });
             }
           }
@@ -699,12 +921,12 @@ class XHSNoteExtractor {
 
   getAuthorInfo() {
     const selectors = [
-      '.author-name',
-      '.user-name',
+      ".author-name",
+      ".user-name",
       '[data-testid="author-name"]',
-      '.note-author',
-      '.username',
-      '.user-info .name'
+      ".note-author",
+      ".username",
+      ".user-info .name",
     ];
 
     for (const selector of selectors) {
@@ -714,17 +936,17 @@ class XHSNoteExtractor {
       }
     }
 
-    return '未知作者';
+    return "未知作者";
   }
 
   displayResults(data) {
-    const resultDiv = this.panel.querySelector('.xhs-extractor-result');
-    const titleEl = this.panel.querySelector('#result-title');
-    const authorEl = this.panel.querySelector('#result-author');
-    const imagesEl = this.panel.querySelector('#result-images');
-    const wordsEl = this.panel.querySelector('#result-words');
+    const resultDiv = this.panel.querySelector(".xhs-extractor-result");
+    const titleEl = this.panel.querySelector("#result-title");
+    const authorEl = this.panel.querySelector("#result-author");
+    const imagesEl = this.panel.querySelector("#result-images");
+    const wordsEl = this.panel.querySelector("#result-words");
 
-    resultDiv.style.display = 'block';
+    resultDiv.style.display = "block";
     titleEl.textContent = data.title;
     authorEl.textContent = data.author;
     imagesEl.textContent = `${data.images.length}张`;
@@ -732,24 +954,29 @@ class XHSNoteExtractor {
   }
 
   async downloadData(data) {
+    console.log("downloadData");
     if (!data) {
-      this.showNotification('请先提取笔记内容', 'error');
+      this.showNotification("请先提取笔记内容", "error");
       return;
     }
 
     try {
       // 创建JSON格式数据
       const jsonData = JSON.stringify(data, null, 2);
-      const blob = new Blob([jsonData], { type: 'application/json;charset=utf-8' });
+      const blob = new Blob([jsonData], {
+        type: "application/json;charset=utf-8",
+      });
       const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
+
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `小红书笔记_${this.sanitizeFilename(data.title || '未命名')}_${Date.now()}.json`;
+      link.download = `小红书笔记_${this.sanitizeFilename(
+        data.title || "未命名"
+      )}_${Date.now()}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       setTimeout(() => URL.revokeObjectURL(url), 1000);
 
       // 保存到chrome.storage
@@ -758,11 +985,10 @@ class XHSNoteExtractor {
         await chrome.storage.local.set({ [key]: data });
       }
 
-      this.showNotification('数据导出成功！已保存JSON格式');
-      
+      this.showNotification("数据导出成功！已保存JSON格式");
     } catch (error) {
-      console.error('数据保存失败:', error);
-      this.showNotification('数据保存失败，请重试', 'error');
+      console.error("数据保存失败:", error);
+      this.showNotification("数据保存失败，请重试", "error");
     }
   }
 
@@ -771,16 +997,16 @@ class XHSNoteExtractor {
     md += `**作者:** ${data.author}\n\n`;
     md += `**链接:** ${data.url}\n\n`;
     md += `**提取时间:** ${new Date(data.extractedAt).toLocaleString()}\n\n`;
-    
+
     if (data.images.length > 0) {
       md += `## 图片 (${data.images.length}张)\n\n`;
       data.images.forEach((img, index) => {
         md += `![图片${index + 1}](${img})\n\n`;
       });
     }
-    
+
     md += `## 正文内容\n\n${data.content}\n`;
-    
+
     return md;
   }
 
@@ -804,64 +1030,103 @@ class XHSNoteExtractor {
     <div class="meta">
         <p><strong>作者:</strong> ${data.author}</p>
         <p><strong>链接:</strong> <a href="${data.url}">${data.url}</a></p>
-        <p><strong>提取时间:</strong> ${new Date(data.extractedAt).toLocaleString()}</p>
+        <p><strong>提取时间:</strong> ${new Date(
+          data.extractedAt
+        ).toLocaleString()}</p>
     </div>
     
-    ${data.images.length > 0 ? `
+    ${
+      data.images.length > 0
+        ? `
     <h2>图片 (${data.images.length}张)</h2>
     <div class="images">
-        ${data.images.map(img => `<img src="${img}" alt="笔记图片">`).join('')}
+        ${data.images
+          .map((img) => `<img src="${img}" alt="笔记图片">`)
+          .join("")}
     </div>
-    ` : ''}
+    `
+        : ""
+    }
     
     <h2>正文内容</h2>
     <div class="content">${data.content}</div>
 </body>
 </html>`;
-    
+
     return html;
   }
 
   sanitizeFilename(filename) {
-    return filename.replace(/[<>:'"/\\|?*]/g, '_').substring(0, 50);
+    return filename.replace(/[<>:'"/\\|?*]/g, "_").substring(0, 50);
   }
 
   async waitForContent() {
     return new Promise((resolve) => {
+      // 确保在安全的环境中执行
+      if (typeof document === "undefined" || !document.body) {
+        console.log("document或document.body不存在，直接resolve");
+        resolve();
+        return;
+      }
+
       let attempts = 0;
       const maxAttempts = 15;
-      
+
       const checkContent = () => {
-        const title = this.getNoteTitle();
-        const content = this.getNoteContent();
-        const images = this.getNoteImages();
-        
-        if ((title && content) || attempts >= maxAttempts) {
+        try {
+          const title = this.getNoteTitle();
+          const content = this.getNoteContent();
+          const images = this.getNoteImages();
+
+          if ((title && content) || attempts >= maxAttempts) {
+            resolve();
+          } else {
+            attempts++;
+            setTimeout(checkContent, 800);
+          }
+        } catch (error) {
+          console.error("checkContent出错:", error);
           resolve();
-        } else {
-          attempts++;
-          setTimeout(checkContent, 800);
         }
       };
-      
+
       const observer = new MutationObserver(() => {
-        const title = this.getNoteTitle();
-        const content = this.getNoteContent();
-        if (title && content) {
+        try {
+          const title = this.getNoteTitle();
+          const content = this.getNoteContent();
+          if (title && content) {
+            observer.disconnect();
+            resolve();
+          }
+        } catch (error) {
+          console.error("MutationObserver回调出错:", error);
           observer.disconnect();
           resolve();
         }
       });
-      
-      observer.observe(document.body, {
-        childList: true,
-        subtree: true
-      });
-      
+
+      // 确保document.body存在
+      if (document.body) {
+        try {
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+          });
+        } catch (error) {
+          console.error("MutationObserver.observe出错:", error);
+        }
+      } else {
+        console.log("document.body不存在，跳过MutationObserver");
+      }
+
       checkContent();
-      
+
       setTimeout(() => {
-        observer.disconnect();
+        try {
+          observer.disconnect();
+        } catch (error) {
+          console.error("observer.disconnect出错:", error);
+        }
         resolve();
       }, 15000);
     });
@@ -870,48 +1135,344 @@ class XHSNoteExtractor {
   handleDrag(e) {
     const panel = this.panel;
     if (!panel) return;
-    
+
     const rect = panel.getBoundingClientRect();
-    const isDragging = e.target.closest('.xhs-extractor-header') && 
-                      e.clientY <= rect.top + 60;
-    
+    const isDragging =
+      e.target.closest(".xhs-extractor-header") && e.clientY <= rect.top + 60;
+
     if (isDragging) {
-      panel.style.cursor = 'grabbing';
-      panel.classList.add('dragging');
-      
+      panel.style.cursor = "grabbing";
+      panel.classList.add("dragging");
+
       let startX = e.clientX - rect.left;
       let startY = e.clientY - rect.top;
-      
+
       const handleMouseMove = (e) => {
         const newX = e.clientX - startX;
         const newY = e.clientY - startY;
-        
-        panel.style.left = `${Math.max(0, Math.min(window.innerWidth - rect.width, newX))}px`;
-        panel.style.top = `${Math.max(0, Math.min(window.innerHeight - rect.height, newY))}px`;
-        panel.style.right = 'auto';
+
+        panel.style.left = `${Math.max(
+          0,
+          Math.min(window.innerWidth - rect.width, newX)
+        )}px`;
+        panel.style.top = `${Math.max(
+          0,
+          Math.min(window.innerHeight - rect.height, newY)
+        )}px`;
+        panel.style.right = "auto";
       };
-      
+
       const handleMouseUp = () => {
-        panel.style.cursor = '';
-        panel.classList.remove('dragging');
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        panel.style.cursor = "";
+        panel.classList.remove("dragging");
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
       };
-      
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
     }
   }
 
-  showNotification(message, type = 'success') {
-    const notification = document.createElement('div');
-    notification.className = 'xhs-extractor-notification';
+  // 延迟函数
+  sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // 从URL复制图片到剪贴板（使用你提供的方法）
+  async copyImageFromURL(imageUrl) {
+    try {
+      console.log("🔄 开始从URL复制图片:", imageUrl);
+      console.log("🔍 检查Chrome API可用性...");
+
+      // 首先尝试使用Chrome扩展API通过background script下载
+      if (
+        typeof chrome !== "undefined" &&
+        chrome.runtime &&
+        chrome.runtime.sendMessage
+      ) {
+        console.log("✅ Chrome API可用，使用background script下载");
+        return new Promise((resolve) => {
+          console.log("📤 发送下载请求到background script...");
+          chrome.runtime.sendMessage(
+            { action: "downloadImage", url: imageUrl },
+            async (response) => {
+              console.log("📥 收到background script响应:", response);
+              if (response && response.success) {
+                try {
+                  console.log("🔄 开始转换base64为Blob...");
+                  // 将base64转换为Blob
+                  const byteCharacters = atob(response.data.split(",")[1]);
+                  const byteNumbers = new Array(byteCharacters.length);
+                  for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                  }
+                  const byteArray = new Uint8Array(byteNumbers);
+                  const blob = new Blob([byteArray], {
+                    type: response.contentType || "image/jpeg",
+                  });
+
+                  console.log(
+                    "✅ 图片下载成功，大小:",
+                    blob.size,
+                    "bytes，类型:",
+                    blob.type
+                  );
+
+                  // 如果图片是webp格式，需要转换为PNG
+                  let finalBlob = blob;
+                  if (blob.type === "image/webp") {
+                    console.log("🔄 检测到WebP格式，转换为PNG...");
+                    finalBlob = await this.convertToPng(blob);
+                    console.log(
+                      "✅ 转换完成，PNG大小:",
+                      finalBlob.size,
+                      "bytes"
+                    );
+                  }
+
+                  console.log("🔄 创建ClipboardItem...");
+                  // 创建 ClipboardItem
+                  const item = new ClipboardItem({
+                    [finalBlob.type]: finalBlob,
+                  });
+
+                  console.log("🔄 写入剪贴板...");
+                  // 写入剪贴板
+                  await navigator.clipboard.write([item]);
+                  console.log("✅ 图片已复制到剪贴板");
+                  resolve(true);
+                } catch (clipboardError) {
+                  console.error("❌ 剪贴板写入失败:", clipboardError);
+                  resolve(false);
+                }
+              } else {
+                console.error("❌ Background script下载失败:", response?.error);
+                resolve(false);
+              }
+            }
+          );
+        });
+      } else {
+        console.log("⚠️ Chrome扩展API不可用，尝试直接fetch");
+
+        // 如果Chrome API不可用，尝试直接fetch（可能会失败）
+        const response = await fetch(imageUrl, {
+          mode: "cors",
+          headers: {
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            Referer: "https://www.xiaohongshu.com/",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const blob = await response.blob();
+        console.log(
+          "图片下载成功，大小:",
+          blob.size,
+          "bytes，类型:",
+          blob.type,
+          blob
+        );
+
+        // 如果图片是webp格式，需要转换为PNG
+        let finalBlob = blob;
+        if (blob.type === "image/webp") {
+          console.log("检测到WebP格式，转换为PNG...");
+          finalBlob = await this.convertToPng(blob);
+          console.log("转换完成，PNG大小:", finalBlob.size, "bytes");
+        }
+
+        // 创建 ClipboardItem
+        const item = new ClipboardItem({
+          [finalBlob.type]: finalBlob,
+        });
+
+        // 写入剪贴板
+        await navigator.clipboard.write([item]);
+        console.log("图片已复制到剪贴板");
+
+        return true;
+      }
+    } catch (err) {
+      console.error("复制失败:", err);
+      return false;
+    }
+  }
+
+  // 备用方法：尝试通过文件输入上传图片
+  async tryFileInputMethod(imageBlob, imageIndex) {
+    try {
+      console.log(`尝试文件输入方法处理第 ${imageIndex} 张图片`);
+
+      // 查找文件输入元素
+      const fileInput = document.querySelector('input[type="file"]');
+      if (!fileInput) {
+        console.log("未找到文件输入元素");
+        return false;
+      }
+
+      console.log("找到文件输入元素:", fileInput);
+
+      // 创建File对象
+      const file = new File([imageBlob], `image_${imageIndex}.png`, {
+        type: "image/png",
+      });
+
+      // 创建DataTransfer对象
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+
+      // 设置文件到输入元素
+      fileInput.files = dataTransfer.files;
+
+      // 触发change事件
+      const changeEvent = new Event("change", { bubbles: true });
+      fileInput.dispatchEvent(changeEvent);
+
+      // 触发input事件
+      const inputEvent = new Event("input", { bubbles: true });
+      fileInput.dispatchEvent(inputEvent);
+
+      console.log(`第 ${imageIndex} 张图片通过文件输入方法处理完成`);
+      return true;
+    } catch (error) {
+      console.error(`文件输入方法失败:`, error);
+      return false;
+    }
+  }
+
+  // 模拟粘贴操作
+  async simulatePaste() {
+    try {
+      console.log("🔄 开始模拟粘贴操作...");
+      console.log("🔍 当前页面URL:", window.location.href);
+      console.log("🔍 当前页面标题:", document.title);
+
+      // 等待确保剪贴板内容已设置
+      console.log("⏳ 等待300ms确保剪贴板内容已设置...");
+      await this.sleep(300);
+
+      // 检查剪贴板内容
+      let clipboardData = null;
+      try {
+        console.log("🔍 检查剪贴板内容...");
+        const clipboardItems = await navigator.clipboard.read();
+        console.log("📋 剪贴板项目数量:", clipboardItems.length);
+
+        if (clipboardItems.length > 0) {
+          // 获取第一个剪贴板项目的数据
+          const item = clipboardItems[0];
+          console.log(`📋 剪贴板项目类型:`, item.types);
+
+          // 为每个类型创建DataTransfer
+          clipboardData = new DataTransfer();
+
+          for (const type of item.types) {
+            try {
+              const blob = await item.getType(type);
+              console.log(`📋 类型 ${type} 大小:`, blob.size, "bytes");
+
+              // 将blob添加到DataTransfer
+              const file = new File([blob], `image.${type.split("/")[1]}`, {
+                type,
+              });
+              clipboardData.items.add(file);
+              console.log(`✅ 已添加 ${type} 到DataTransfer`);
+            } catch (e) {
+              console.log(`📋 类型 ${type} 读取失败:`, e.message);
+            }
+          }
+        }
+      } catch (error) {
+        console.log("⚠️ 无法读取剪贴板内容:", error.message);
+      }
+
+      // 简化策略：直接聚焦页面并粘贴
+      console.log("🎯 直接聚焦页面并粘贴...");
+
+      // 确保页面获得焦点
+      window.focus();
+      document.body.focus();
+
+      // 等待一下让页面获得焦点
+      await this.sleep(100);
+
+      // 创建带有实际数据的粘贴事件
+      console.log("🔄 创建粘贴事件...");
+      const pasteEvent = new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: clipboardData || new DataTransfer(),
+      });
+
+      // 创建键盘事件
+      console.log("🔄 创建键盘事件...");
+      const keyDownEvent = new KeyboardEvent("keydown", {
+        key: "v",
+        code: "KeyV",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      const keyUpEvent = new KeyboardEvent("keyup", {
+        key: "v",
+        code: "KeyV",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+
+      // 在多个位置触发事件
+      console.log("🔄 在window上触发事件...");
+      window.dispatchEvent(pasteEvent);
+      window.dispatchEvent(keyDownEvent);
+      window.dispatchEvent(keyUpEvent);
+
+      console.log("🔄 在document上触发事件...");
+      document.dispatchEvent(pasteEvent);
+      document.dispatchEvent(keyDownEvent);
+      document.dispatchEvent(keyUpEvent);
+
+      console.log("🔄 在document.body上触发事件...");
+      if (document.body) {
+        document.body.dispatchEvent(pasteEvent);
+        document.body.dispatchEvent(keyDownEvent);
+        document.body.dispatchEvent(keyUpEvent);
+      }
+
+      // 尝试在document.documentElement上触发事件
+      console.log("🔄 在document.documentElement上触发事件...");
+      document.documentElement.dispatchEvent(pasteEvent);
+      document.documentElement.dispatchEvent(keyDownEvent);
+      document.documentElement.dispatchEvent(keyUpEvent);
+
+      console.log("✅ 已触发所有粘贴事件");
+
+      // 等待一下看是否有反应
+      console.log("⏳ 等待500ms看是否有反应...");
+      await this.sleep(500);
+
+      console.log("✅ 粘贴操作模拟完成");
+    } catch (error) {
+      console.error("❌ 模拟粘贴失败:", error);
+    }
+  }
+
+  showNotification(message, type = "success") {
+    const notification = document.createElement("div");
+    notification.className = "xhs-extractor-notification";
     notification.style.cssText = `
       position: fixed;
       top: 20px;
       right: 20px;
       padding: 14px 20px;
-      background: ${type === 'success' ? '#52c41a' : '#ff4d4f'};
+      background: ${type === "success" ? "#52c41a" : "#ff4d4f"};
       color: white;
       border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -921,20 +1482,20 @@ class XHSNoteExtractor {
       word-break: break-word;
     `;
     notification.textContent = message;
-    
+
     document.body.appendChild(notification);
-    
+
     setTimeout(() => {
-      notification.style.opacity = '0';
-      notification.style.transform = 'translateX(100%)';
+      notification.style.opacity = "0";
+      notification.style.transform = "translateX(100%)";
       setTimeout(() => notification.remove(), 300);
     }, 3000);
   }
 }
 
 // 初始化扩展
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
     new XHSNoteExtractor();
   });
 } else {

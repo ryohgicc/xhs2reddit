@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "小红书笔记搬运助手",
-  "version": "1.0.23",
+  "version": "1.0.50",
   "description": "自动提取小红书笔记内容，支持标题、正文和图片下载",
   "permissions": [
     "activeTab",
     "storage",
     "downloads",
-    "scripting"
+    "scripting",
+    "clipboardWrite"
   ],
   "host_permissions": [
     "https://www.xiaohongshu.com/*",
