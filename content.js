@@ -953,19 +953,28 @@ class XHSNoteExtractor {
   }
 
   getNoteImages() {
-    // 从笔记正文中的实际图片元素提取图片
+    // 从笔记正文中的实际图片元素提取图片，按DOM顺序保持原始顺序
     const images = [];
     const seenUrls = new Set();
 
-    // 小红书笔记图片的选择器 - 只选择笔记详情页的大图
-    const imageSelectors = ["img.note-slider-img"];
+    // 小红书笔记图片的选择器 - 按优先级排序，确保获取正确的图片顺序
+    const imageSelectors = [
+      "img.note-slider-img",           // 笔记详情页轮播图片
+      ".swiper-slide img",             // 轮播容器中的图片
+      ".note-scroller img",            // 笔记滚动容器中的图片
+      ".note-content img",             // 笔记内容区域的图片
+      "img[src*='xhscdn.com']",        // 所有小红书CDN图片
+    ];
 
     let imageIndex = 1;
 
-    // 查找所有可能的图片元素
-    imageSelectors.forEach((selector) => {
+    // 按选择器优先级查找图片，但保持DOM顺序
+    for (const selector of imageSelectors) {
       const imgElements = document.querySelectorAll(selector);
-      imgElements.forEach((img) => {
+      console.log(`🔍 选择器 "${selector}" 找到 ${imgElements.length} 张图片`);
+      
+      // 将NodeList转换为数组并按DOM顺序处理
+      Array.from(imgElements).forEach((img, index) => {
         let src =
           img.src || img.getAttribute("data-src") || img.getAttribute("srcset");
         if (src) {
@@ -983,18 +992,29 @@ class XHSNoteExtractor {
             // 放宽条件：提取所有小红书CDN的图片，不限制路径和格式
             if (cleanUrl && !seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
-              images.push({
+              const imageData = {
                 url: cleanUrl,
                 alt: img.alt || `小红书图片${imageIndex++}`,
                 width: img.naturalWidth || 0,
                 height: img.naturalHeight || 0,
-              });
+                domOrder: index, // 记录DOM顺序
+                selector: selector // 记录来源选择器
+              };
+              images.push(imageData);
+              console.log(`✅ 添加图片 ${images.length}: ${cleanUrl.substring(0, 50)}... (选择器: ${selector}, DOM顺序: ${index})`);
             }
           }
         }
       });
-    });
+      
+      // 如果已经找到图片，优先使用第一个选择器的结果
+      if (images.length > 0) {
+        console.log(`📸 使用选择器 "${selector}" 找到的 ${images.length} 张图片`);
+        break;
+      }
+    }
 
+    console.log(`🖼️ 最终获取到 ${images.length} 张图片，按原始DOM顺序排列`);
     return images;
   }
 
