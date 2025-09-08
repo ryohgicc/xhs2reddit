@@ -598,19 +598,78 @@ class XHSNoteExtractor {
 
         // 尝试填充正文内容到其他元素
         if (!contentFilled) {
-          // 尝试多种选择器填入内容
-          const contentSelectors = [
-            'div[slot="rte"][contenteditable="true"]',
-            'div[aria-label*="正文文本"][contenteditable="true"]',
-            'div[data-lexical-editor="true"][contenteditable="true"]',
-            'div[name="body"][contenteditable="true"]',
-            'div[role="textbox"][contenteditable="true"]',
-            'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
-            'span[data-lexical-text="true"]',
-            '[data-lexical-text="true"]',
-          ];
+          // 根据页面类型使用不同的选择器
+          let contentSelectors = [];
+          
+          if (isTextSubmit) {
+            // TEXT页面的选择器
+            contentSelectors = [
+              'div[slot="rte"][contenteditable="true"]',
+              'div[aria-label*="正文文本"][contenteditable="true"]',
+              'div[data-lexical-editor="true"][contenteditable="true"]',
+              'div[name="body"][contenteditable="true"]',
+              'div[role="textbox"][contenteditable="true"]',
+              'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
+              'span[data-lexical-text="true"]',
+              '[data-lexical-text="true"]',
+            ];
+          } else if (isImageSubmit) {
+            // IMAGE页面的选择器（可能有不同的DOM结构）
+            contentSelectors = [
+              'div[slot="rte"][contenteditable="true"]',
+              'div[data-lexical-editor="true"][contenteditable="true"]',
+              'div[role="textbox"][contenteditable="true"]',
+              'div[contenteditable="true"][aria-label*="描述"]',
+              'div[contenteditable="true"][aria-label*="caption"]',
+              'div[contenteditable="true"][placeholder*="描述"]',
+              'textarea[name="body"]',
+              'textarea[placeholder*="描述"]',
+              'span[data-lexical-text="true"]',
+              '[data-lexical-text="true"]',
+            ];
+          } else {
+            // LINK页面或其他页面的选择器
+            contentSelectors = [
+              'div[slot="rte"][contenteditable="true"]',
+              'div[data-lexical-editor="true"][contenteditable="true"]',
+              'div[role="textbox"][contenteditable="true"]',
+              'textarea[name="body"]',
+              'textarea[name="text"]',
+              'div[contenteditable="true"][aria-label*="正文"]',
+              'span[data-lexical-text="true"]',
+              '[data-lexical-text="true"]',
+            ];
+          }
+          
+          console.log(`页面类型: ${isTextSubmit ? 'TEXT' : isImageSubmit ? 'IMAGE' : 'LINK/OTHER'}`);
+          console.log('使用的选择器列表:', contentSelectors);
 
           console.log("查找内容输入框...");
+          
+          // 先列出页面上所有可能的内容编辑元素
+          console.log("=== 页面上所有可能的内容编辑元素 ===");
+          const allPossibleElements = [
+            ...document.querySelectorAll('[contenteditable="true"]'),
+            ...document.querySelectorAll('textarea'),
+            ...document.querySelectorAll('[data-lexical-text="true"]'),
+            ...document.querySelectorAll('[role="textbox"]')
+          ];
+          
+          allPossibleElements.forEach((el, index) => {
+            console.log(`元素 ${index}:`, {
+              tagName: el.tagName,
+              id: el.id,
+              className: el.className,
+              name: el.name,
+              placeholder: el.placeholder,
+              ariaLabel: el.getAttribute('aria-label'),
+              slot: el.getAttribute('slot'),
+              role: el.getAttribute('role'),
+              element: el
+            });
+          });
+          console.log("=== 结束元素列表 ===");
+          
           for (const selector of contentSelectors) {
             const contentElement = document.querySelector(selector);
             console.log(`选择器 ${selector}:`, contentElement);
