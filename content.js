@@ -390,9 +390,9 @@ class XHSNoteExtractor {
 
     if (downloadBtn && data) {
       downloadBtn.addEventListener("click", async () => {
+        // 只填充表单，不自动粘贴图片
         this.fillRedditForm(data);
-        // 下载图片并设置到剪贴板
-        await this.prepareImagesForPasting(data);
+        this.showNotification("表单已填充，请手动点击'粘贴图片'按钮", "success");
       });
     }
     if (pasteBtn && data) {
@@ -516,8 +516,8 @@ class XHSNoteExtractor {
         if (titleTextarea) {
           console.log("找到输入框:", "innerTextArea", titleTextarea);
 
-          // Reddit标题字段应该始终填入小红书笔记的标题
-          const contentToFill = data.title;
+          // 根据页面类型决定填入什么内容
+          const contentToFill = isImageSubmit ? data.content : data.title;
           if (contentToFill) {
             // 根据元素类型选择填充方法
             if (
@@ -582,11 +582,10 @@ class XHSNoteExtractor {
           });
         }
 
-        // 尝试填充内容到Reddit正文区域（无论什么页面类型都需要填充正文）
-        if (!contentFilled) {
-          // 尝试多种选择器填入内容，优先匹配Reddit正文区域
+        // 如果没有填充成功且不是图片页面，尝试填充内容到其他元素
+        if (!contentFilled && !isImageSubmit) {
+          // 尝试多种选择器填入内容
           const contentSelectors = [
-            'div[slot="rte"][aria-label*="正文文本"][contenteditable="true"]',
             'div[slot="rte"][contenteditable="true"]',
             'div[aria-label*="正文文本"][contenteditable="true"]',
             'div[data-lexical-editor="true"][contenteditable="true"]',
@@ -624,30 +623,16 @@ class XHSNoteExtractor {
                 } catch (e) {
                   console.log("execCommand失败，尝试其他方法:", e);
 
-                  // 方法2: 直接构建正确的DOM结构，适配Reddit Lexical编辑器
+                  // 方法2: 直接构建正确的DOM结构
                   contentElement.innerHTML = "";
-                  
-                  // 将内容按行分割，每行创建一个段落
-                  const lines = data.content.split('\n');
-                  lines.forEach((line, index) => {
-                    const paragraph = document.createElement("p");
-                    paragraph.className = "first:mt-0 last:mb-0";
-                    
-                    if (line.trim() === '') {
-                      // 空行处理
-                      paragraph.innerHTML = '<br>';
-                    } else {
-                      // 有内容的行
-                      const span = document.createElement("span");
-                      span.setAttribute("data-lexical-text", "true");
-                      span.textContent = line;
-                      paragraph.appendChild(span);
-                    }
-                    
-                    contentElement.appendChild(paragraph);
-                  });
-                  
-                  console.log("使用DOM结构方法填充内容，共", lines.length, "行");
+                  const paragraph = document.createElement("p");
+                  paragraph.className = "first:mt-0 last:mb-0";
+                  const span = document.createElement("span");
+                  span.setAttribute("data-lexical-text", "true");
+                  span.textContent = data.content;
+                  paragraph.appendChild(span);
+                  contentElement.appendChild(paragraph);
+                  console.log("使用DOM结构方法填充内容");
                 }
 
                 // 额外尝试：模拟用户输入
@@ -1443,29 +1428,37 @@ class XHSNoteExtractor {
         cancelable: true,
       });
 
-      // 在多个位置触发事件
-      console.log("🔄 在window上触发事件...");
-      window.dispatchEvent(pasteEvent);
-      window.dispatchEvent(keyDownEvent);
-      window.dispatchEvent(keyUpEvent);
-
-      console.log("🔄 在document上触发事件...");
-      document.dispatchEvent(pasteEvent);
-      document.dispatchEvent(keyDownEvent);
-      document.dispatchEvent(keyUpEvent);
-
-      console.log("🔄 在document.body上触发事件...");
-      if (document.body) {
-        document.body.dispatchEvent(pasteEvent);
-        document.body.dispatchEvent(keyDownEvent);
-        document.body.dispatchEvent(keyUpEvent);
+      // 优化粘贴策略：只在最合适的目标上触发一次
+      console.log("🔄 寻找最佳粘贴目标...");
+      
+      // 尝试找到当前聚焦的元素或文本输入区域
+      let targetElement = document.activeElement;
+      
+      // 如果没有聚焦元素，尝试找到文本输入区域
+      if (!targetElement || targetElement === document.body) {
+        const textInputs = document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
+        if (textInputs.length > 0) {
+          targetElement = textInputs[0];
+        }
       }
-
-      // 尝试在document.documentElement上触发事件
-      console.log("🔄 在document.documentElement上触发事件...");
-      document.documentElement.dispatchEvent(pasteEvent);
-      document.documentElement.dispatchEvent(keyDownEvent);
-      document.documentElement.dispatchEvent(keyUpEvent);
+      
+      // 如果还是没找到合适的目标，使用document.body
+      if (!targetElement) {
+        targetElement = document.body;
+      }
+      
+      console.log("🎯 选择的粘贴目标:", targetElement.tagName, targetElement.className);
+      
+      // 聚焦目标元素
+      if (targetElement.focus) {
+        targetElement.focus();
+      }
+      
+      // 只在选定的目标元素上触发一次粘贴事件
+      console.log("🔄 在目标元素上触发粘贴事件...");
+      targetElement.dispatchEvent(pasteEvent);
+      targetElement.dispatchEvent(keyDownEvent);
+      targetElement.dispatchEvent(keyUpEvent);
 
       console.log("✅ 已触发所有粘贴事件");
 
