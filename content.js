@@ -390,9 +390,13 @@ class XHSNoteExtractor {
 
     if (downloadBtn && data) {
       downloadBtn.addEventListener("click", async () => {
-        // 只填充表单，不自动粘贴图片
+        // 填充表单并自动粘贴图片
         this.fillRedditForm(data);
-        this.showNotification("表单已填充，请手动点击'粘贴图片'按钮", "success");
+        // 同时执行图片粘贴
+        if (data.images && data.images.length > 0) {
+          console.log(`🖼️ 自动开始处理 ${data.images.length} 张图片`);
+          await this.prepareImagesForPasting(data);
+        }
       });
     }
     if (pasteBtn && data) {
