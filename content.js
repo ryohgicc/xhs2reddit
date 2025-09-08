@@ -516,8 +516,8 @@ class XHSNoteExtractor {
         if (titleTextarea) {
           console.log("找到输入框:", "innerTextArea", titleTextarea);
 
-          // 根据页面类型决定填入什么内容
-          const contentToFill = isImageSubmit ? data.content : data.title;
+          // 标题框应该始终填充标题内容
+          const contentToFill = data.title;
           if (contentToFill) {
             // 根据元素类型选择填充方法
             if (
@@ -561,12 +561,12 @@ class XHSNoteExtractor {
               }, 100);
             }
 
-            console.log("内容填充完成");
-            console.log("填充的内容类型:", isImageSubmit ? "描述内容" : "标题");
+            console.log("标题填充完成");
+            console.log("填充的内容类型: 标题");
           }
 
           titleFilled = true;
-          contentFilled = isImageSubmit; // 如果是图片页面，标题框就是内容框
+          // 标题填充完成，但还需要填充正文内容
         }
 
         if (!titleFilled) {
@@ -582,8 +582,8 @@ class XHSNoteExtractor {
           });
         }
 
-        // 如果没有填充成功且不是图片页面，尝试填充内容到其他元素
-        if (!contentFilled && !isImageSubmit) {
+        // 尝试填充正文内容到其他元素
+        if (!contentFilled) {
           // 尝试多种选择器填入内容
           const contentSelectors = [
             'div[slot="rte"][contenteditable="true"]',
