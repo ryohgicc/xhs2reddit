@@ -57,8 +57,11 @@ class XHSNoteExtractor {
 
       console.log(`✅ 成功下载 ${imageBlobs.length} 张图片，开始粘贴...`);
 
-      // 逐个复制并粘贴图片到剪贴板
+      // 将所有图片一次性复制到剪贴板
       await this.copyMultipleImagesToClipboard(imageBlobs);
+
+      // 执行一次粘贴操作
+      await this.simulatePaste();
 
       console.log("🎉 所有图片粘贴完成");
       this.showNotification(
@@ -71,37 +74,28 @@ class XHSNoteExtractor {
     }
   }
 
-  // 逐个复制图片到剪贴板（浏览器不支持多个ClipboardItems）
+  // 批量复制多张图片到剪贴板
   async copyMultipleImagesToClipboard(imageBlobs) {
     try {
-      console.log(`🔄 开始逐个复制 ${imageBlobs.length} 张图片到剪贴板...`);
+      console.log(`🔄 开始批量复制 ${imageBlobs.length} 张图片到剪贴板...`);
 
+      // 创建多个ClipboardItem
+      const clipboardItems = [];
       for (let i = 0; i < imageBlobs.length; i++) {
         const blob = imageBlobs[i];
-        console.log(`🔄 正在复制第 ${i + 1}/${imageBlobs.length} 张图片...`);
-        
-        // 单个图片复制到剪贴板
-        const clipboardItem = new ClipboardItem({
+        const item = new ClipboardItem({
           [blob.type]: blob,
         });
-        
-        await navigator.clipboard.write([clipboardItem]);
-        console.log(`✅ 第 ${i + 1} 张图片已复制到剪贴板`);
-        
-        // 执行粘贴操作
-        await this.simulatePaste();
-        console.log(`✅ 第 ${i + 1} 张图片已粘贴`);
-        
-        // 短暂延迟，确保粘贴操作完成
-        if (i < imageBlobs.length - 1) {
-          await this.sleep(500);
-        }
+        clipboardItems.push(item);
+        console.log(`✅ 第 ${i + 1} 张图片已添加到剪贴板项目`);
       }
-      
-      console.log(`✅ 成功复制并粘贴 ${imageBlobs.length} 张图片`);
+
+      // 一次性写入所有图片到剪贴板
+      await navigator.clipboard.write(clipboardItems);
+      console.log(`✅ 成功将 ${imageBlobs.length} 张图片复制到剪贴板`);
       return true;
     } catch (error) {
-      console.error("❌ 复制图片到剪贴板失败:", error);
+      console.error("❌ 批量复制图片到剪贴板失败:", error);
       return false;
     }
   }
@@ -317,14 +311,18 @@ class XHSNoteExtractor {
   }
 
   async createRedditPanel() {
+    console.log("🔧 开始创建Reddit面板...");
+
     // 移除已存在的面板
     const existingPanel = document.querySelector(".xhs-extractor-panel");
     if (existingPanel) {
+      console.log("🗑️ 移除已存在的面板");
       existingPanel.remove();
     }
 
     // 从存储中获取上次提取的数据
     const lastExtractedData = await this.getStoredData();
+    console.log("📊 获取到的数据:", lastExtractedData);
 
     this.panel = document.createElement("div");
     this.panel.className = "xhs-extractor-panel";
@@ -366,6 +364,7 @@ class XHSNoteExtractor {
           </div>
           <button class="xhs-extractor-download" id="reddit-download-btn">使用此内容</button>
           <button class="xhs-extractor-download" id="reddit-paste-btn" style="background: #ff6b6b; margin-left: 8px;">📋 粘贴图片</button>
+          <button class="xhs-extractor-download" id="reddit-paste-content-btn" style="background: #4CAF50; margin-left: 8px;">📝 粘贴内容</button>
         </div>
       `;
     } else {
@@ -392,41 +391,60 @@ class XHSNoteExtractor {
     const header = this.panel.querySelector(".xhs-extractor-header");
     const downloadBtn = this.panel.querySelector("#reddit-download-btn");
     const pasteBtn = this.panel.querySelector("#reddit-paste-btn");
+    const pasteContentBtn = this.panel.querySelector(
+      "#reddit-paste-content-btn"
+    );
     header.addEventListener("mousedown", (e) => this.handleDrag(e));
 
     if (downloadBtn && data) {
       downloadBtn.addEventListener("click", async () => {
-        // 重新获取最新的存储数据
+        console.log("📋 用户点击使用此内容按钮");
+        
+        // 获取最新的存储数据
         const latestData = await this.getStoredData();
         const dataToUse = latestData || data;
         
-        console.log("🔄 使用最新数据:", dataToUse);
+        console.log("📊 使用的数据:", dataToUse);
+        console.log("🔄 数据来源:", latestData ? "最新存储数据" : "面板创建时数据");
         
-        // 填充表单并自动粘贴图片
-        this.fillRedditForm(dataToUse);
-        // 同时执行图片粘贴
-        if (dataToUse.images && dataToUse.images.length > 0) {
-          console.log(`🖼️ 自动开始处理 ${dataToUse.images.length} 张图片`);
-          await this.prepareImagesForPasting(dataToUse);
-        }
-      });
-    }
-    if (pasteBtn && data) {
-      pasteBtn.addEventListener("click", async () => {
-        // 重新获取最新的存储数据
-        const latestData = await this.getStoredData();
-        const dataToUse = latestData || data;
+        // 先粘贴文本内容
+        await this.pasteContentToReddit(dataToUse);
         
-        console.log("🖼️ 用户点击粘贴图片按钮");
-        console.log("📊 使用最新数据:", dataToUse);
-
+        // 然后处理图片
         if (dataToUse.images && dataToUse.images.length > 0) {
           console.log(`🖼️ 开始处理 ${dataToUse.images.length} 张图片`);
           await this.prepareImagesForPasting(dataToUse);
         } else {
           console.log("⚠️ 没有图片数据可粘贴");
+        }
+      });
+    }
+    if (pasteBtn && data) {
+      pasteBtn.addEventListener("click", async () => {
+        console.log("🖼️ 用户点击粘贴图片按钮");
+        console.log("📊 数据:", data);
+
+        if (data.images && data.images.length > 0) {
+          console.log(`🖼️ 开始处理 ${data.images.length} 张图片`);
+          await this.prepareImagesForPasting(data);
+        } else {
+          console.log("⚠️ 没有图片数据可粘贴");
           this.showNotification("没有图片数据可粘贴", "error");
         }
+      });
+    }
+    if (pasteContentBtn && data) {
+      pasteContentBtn.addEventListener("click", async () => {
+        console.log("📝 用户点击粘贴内容按钮");
+        
+        // 获取最新的存储数据
+        const latestData = await this.getStoredData();
+        const dataToUse = latestData || data;
+        
+        console.log("📊 使用的数据:", dataToUse);
+        console.log("🔄 数据来源:", latestData ? "最新存储数据" : "面板创建时数据");
+        
+        await this.pasteContentToReddit(dataToUse);
       });
     }
   }
@@ -536,9 +554,9 @@ class XHSNoteExtractor {
         if (titleTextarea) {
           console.log("找到输入框:", "innerTextArea", titleTextarea);
 
-          // 标题框应该始终填充标题内容
-          const contentToFill = data.title;
-          if (contentToFill) {
+          // 总是先填充标题到标题框
+          const titleToFill = data.title;
+          if (titleToFill) {
             // 根据元素类型选择填充方法
             if (
               titleTextarea.tagName.toLowerCase() === "div" &&
@@ -548,7 +566,7 @@ class XHSNoteExtractor {
               titleTextarea.focus();
               titleTextarea.textContent = "";
               setTimeout(() => {
-                titleTextarea.textContent = contentToFill;
+                titleTextarea.textContent = titleToFill;
 
                 // 触发contenteditable事件
                 titleTextarea.dispatchEvent(
@@ -563,7 +581,7 @@ class XHSNoteExtractor {
               titleTextarea.focus();
               titleTextarea.value = "";
               setTimeout(() => {
-                titleTextarea.value = contentToFill;
+                titleTextarea.value = titleToFill;
 
                 // 触发表单事件
                 titleTextarea.dispatchEvent(
@@ -586,7 +604,8 @@ class XHSNoteExtractor {
           }
 
           titleFilled = true;
-          // 标题填充完成，但还需要填充正文内容
+          // 对于图片页面，标题框就是内容框，所以内容也填充了
+          contentFilled = isImageSubmit;
         }
 
         if (!titleFilled) {
@@ -602,162 +621,78 @@ class XHSNoteExtractor {
           });
         }
 
-        // 尝试填充正文内容到其他元素
-        if (!contentFilled) {
-          // 根据页面类型使用不同的选择器
-          let contentSelectors = [];
-          
-          if (isTextSubmit) {
-            // TEXT页面的选择器
-            contentSelectors = [
-              'div[slot="rte"][contenteditable="true"]',
-              'div[aria-label*="正文文本"][contenteditable="true"]',
-              'div[data-lexical-editor="true"][contenteditable="true"]',
-              'div[name="body"][contenteditable="true"]',
-              'div[role="textbox"][contenteditable="true"]',
-              'p.first\\:mt-0.last\\:mb-0 span[data-lexical-text="true"]',
-              'span[data-lexical-text="true"]',
-              '[data-lexical-text="true"]',
-            ];
-          } else if (isImageSubmit) {
-            // IMAGE页面的选择器（可能有不同的DOM结构）
-            contentSelectors = [
-              'div[slot="rte"][contenteditable="true"]',
-              'div[data-lexical-editor="true"][contenteditable="true"]',
-              'div[role="textbox"][contenteditable="true"]',
-              'div[contenteditable="true"][aria-label*="描述"]',
-              'div[contenteditable="true"][aria-label*="caption"]',
-              'div[contenteditable="true"][placeholder*="描述"]',
-              'textarea[name="body"]',
-              'textarea[placeholder*="描述"]',
-              'span[data-lexical-text="true"]',
-              '[data-lexical-text="true"]',
-            ];
-          } else {
-            // LINK页面或其他页面的选择器
-            contentSelectors = [
-              'div[slot="rte"][contenteditable="true"]',
-              'div[data-lexical-editor="true"][contenteditable="true"]',
-              'div[role="textbox"][contenteditable="true"]',
-              'textarea[name="body"]',
-              'textarea[name="text"]',
-              'div[contenteditable="true"][aria-label*="正文"]',
-              'span[data-lexical-text="true"]',
-              '[data-lexical-text="true"]',
-            ];
-          }
-          
-          console.log(`页面类型: ${isTextSubmit ? 'TEXT' : isImageSubmit ? 'IMAGE' : 'LINK/OTHER'}`);
-          console.log('使用的选择器列表:', contentSelectors);
+        // 如果不是图片页面，需要单独填充内容到内容输入框
+        if (!isImageSubmit && data.content) {
+          console.log("开始查找Reddit内容输入框...");
 
-          console.log("查找内容输入框...");
-          
-          // 先列出页面上所有可能的内容编辑元素
-          console.log("=== 页面上所有可能的内容编辑元素 ===");
-          const allPossibleElements = [
-            ...document.querySelectorAll('[contenteditable="true"]'),
-            ...document.querySelectorAll('textarea'),
-            ...document.querySelectorAll('[data-lexical-text="true"]'),
-            ...document.querySelectorAll('[role="textbox"]')
+          // 专门针对Reddit富文本编辑器的选择器
+          const contentSelectors = [
+            // 直接查找Reddit的内容编辑器
+            'shreddit-composer[name="optionalBody"] div[slot="rte"]',
+            'shreddit-composer div[slot="rte"][contenteditable="true"]',
+            'div[slot="rte"][contenteditable="true"]',
+            'div[data-lexical-editor="true"][contenteditable="true"]',
+            'div[aria-label*="Body text"][contenteditable="true"]',
+            'div[role="textbox"][contenteditable="true"]',
+            // 通用选择器
+            'div[contenteditable="true"]',
           ];
-          
-          allPossibleElements.forEach((el, index) => {
-            console.log(`元素 ${index}:`, {
-              tagName: el.tagName,
-              id: el.id,
-              className: el.className,
-              name: el.name,
-              placeholder: el.placeholder,
-              ariaLabel: el.getAttribute('aria-label'),
-              slot: el.getAttribute('slot'),
-              role: el.getAttribute('role'),
-              element: el
-            });
-          });
-          console.log("=== 结束元素列表 ===");
-          
-          for (const selector of contentSelectors) {
-            const contentElement = document.querySelector(selector);
-            console.log(`选择器 ${selector}:`, contentElement);
-            if (contentElement && data.content) {
-              console.log("找到内容输入框:", selector, contentElement);
 
-              // 聚焦元素
-              contentElement.focus();
+          let contentElement = null;
 
-              // 对于contenteditable的div，使用更可靠的方法
-              if (contentElement.contentEditable === "true") {
-                // 先激活编辑器状态
-                contentElement.focus();
+          // 首先尝试在Shadow DOM中查找
+          console.log("尝试在Shadow DOM中查找内容编辑器...");
+          const allElements = document.querySelectorAll("*");
+          const elementsWithShadow = Array.from(allElements).filter(
+            (el) => el.shadowRoot
+          );
 
-                // 方法1: 使用execCommand (兼容性更好)
-                try {
-                  // 选中所有内容并删除
-                  document.execCommand("selectAll", false, null);
-                  document.execCommand("delete", false, null);
+          for (const host of elementsWithShadow) {
+            if (host.shadowRoot) {
+              console.log("检查Shadow DOM:", host.tagName, host.shadowRoot);
 
-                  // 插入新内容
-                  document.execCommand("insertText", false, data.content);
-                  console.log("使用execCommand填充内容成功");
-                } catch (e) {
-                  console.log("execCommand失败，尝试其他方法:", e);
-
-                  // 方法2: 直接构建正确的DOM结构
-                  contentElement.innerHTML = "";
-                  const paragraph = document.createElement("p");
-                  paragraph.className = "first:mt-0 last:mb-0";
-                  const span = document.createElement("span");
-                  span.setAttribute("data-lexical-text", "true");
-                  span.textContent = data.content;
-                  paragraph.appendChild(span);
-                  contentElement.appendChild(paragraph);
-                  console.log("使用DOM结构方法填充内容");
+              // 在Shadow DOM中查找内容编辑器
+              for (const selector of contentSelectors) {
+                const element = host.shadowRoot.querySelector(selector);
+                if (element && element.contentEditable === "true") {
+                  console.log(
+                    "在Shadow DOM中找到内容编辑器:",
+                    selector,
+                    element
+                  );
+                  contentElement = element;
+                  break;
                 }
-
-                // 额外尝试：模拟用户输入
-                setTimeout(() => {
-                  const inputEvent = new InputEvent("input", {
-                    bubbles: true,
-                    cancelable: true,
-                    inputType: "insertText",
-                    data: data.content,
-                  });
-                  contentElement.dispatchEvent(inputEvent);
-                }, 10);
-              } else {
-                // 对于普通元素
-                contentElement.textContent = data.content;
               }
-
-              // 触发多种事件确保Reddit识别
-              contentElement.dispatchEvent(
-                new Event("focus", { bubbles: true })
-              );
-              contentElement.dispatchEvent(
-                new Event("input", { bubbles: true })
-              );
-              contentElement.dispatchEvent(
-                new Event("change", { bubbles: true })
-              );
-              contentElement.dispatchEvent(
-                new Event("blur", { bubbles: true })
-              );
-
-              // 额外触发键盘事件
-              contentElement.dispatchEvent(
-                new KeyboardEvent("keydown", { bubbles: true })
-              );
-              contentElement.dispatchEvent(
-                new KeyboardEvent("keyup", { bubbles: true })
-              );
-
-              console.log(
-                "内容填充完成，当前内容:",
-                contentElement.textContent || contentElement.innerHTML
-              );
-              contentFilled = true;
-              break;
+              if (contentElement) break;
             }
+          }
+
+          // 如果Shadow DOM中没找到，尝试直接查找
+          if (!contentElement) {
+            console.log("Shadow DOM中未找到，尝试直接查找...");
+            for (const selector of contentSelectors) {
+              const element = document.querySelector(selector);
+              console.log(`选择器 ${selector}:`, element);
+              if (element && element.contentEditable === "true") {
+                console.log("找到内容输入框:", selector, element);
+                contentElement = element;
+                break;
+              }
+            }
+          }
+
+          if (contentElement && data.content) {
+            console.log("开始填充内容到Reddit编辑器...");
+
+            // 聚焦元素
+            contentElement.focus();
+
+            // 等待一下确保焦点设置，然后填充内容
+            setTimeout(() => {
+              this.fillContentToElement(contentElement, data.content);
+              contentFilled = true;
+            }, 100);
           }
 
           if (!contentFilled) {
@@ -953,28 +888,19 @@ class XHSNoteExtractor {
   }
 
   getNoteImages() {
-    // 从笔记正文中的实际图片元素提取图片，按DOM顺序保持原始顺序
+    // 从笔记正文中的实际图片元素提取图片
     const images = [];
     const seenUrls = new Set();
 
-    // 小红书笔记图片的选择器 - 按优先级排序，确保获取正确的图片顺序
-    const imageSelectors = [
-      "img.note-slider-img",           // 笔记详情页轮播图片
-      ".swiper-slide img",             // 轮播容器中的图片
-      ".note-scroller img",            // 笔记滚动容器中的图片
-      ".note-content img",             // 笔记内容区域的图片
-      "img[src*='xhscdn.com']",        // 所有小红书CDN图片
-    ];
+    // 小红书笔记图片的选择器 - 只选择笔记详情页的大图
+    const imageSelectors = ["img.note-slider-img"];
 
     let imageIndex = 1;
 
-    // 按选择器优先级查找图片，但保持DOM顺序
-    for (const selector of imageSelectors) {
+    // 查找所有可能的图片元素
+    imageSelectors.forEach((selector) => {
       const imgElements = document.querySelectorAll(selector);
-      console.log(`🔍 选择器 "${selector}" 找到 ${imgElements.length} 张图片`);
-      
-      // 将NodeList转换为数组并按DOM顺序处理
-      Array.from(imgElements).forEach((img, index) => {
+      imgElements.forEach((img) => {
         let src =
           img.src || img.getAttribute("data-src") || img.getAttribute("srcset");
         if (src) {
@@ -992,29 +918,18 @@ class XHSNoteExtractor {
             // 放宽条件：提取所有小红书CDN的图片，不限制路径和格式
             if (cleanUrl && !seenUrls.has(cleanUrl)) {
               seenUrls.add(cleanUrl);
-              const imageData = {
+              images.push({
                 url: cleanUrl,
                 alt: img.alt || `小红书图片${imageIndex++}`,
                 width: img.naturalWidth || 0,
                 height: img.naturalHeight || 0,
-                domOrder: index, // 记录DOM顺序
-                selector: selector // 记录来源选择器
-              };
-              images.push(imageData);
-              console.log(`✅ 添加图片 ${images.length}: ${cleanUrl.substring(0, 50)}... (选择器: ${selector}, DOM顺序: ${index})`);
+              });
             }
           }
         }
       });
-      
-      // 如果已经找到图片，优先使用第一个选择器的结果
-      if (images.length > 0) {
-        console.log(`📸 使用选择器 "${selector}" 找到的 ${images.length} 张图片`);
-        break;
-      }
-    }
+    });
 
-    console.log(`🖼️ 最终获取到 ${images.length} 张图片，按原始DOM顺序排列`);
     return images;
   }
 
@@ -1278,6 +1193,281 @@ class XHSNoteExtractor {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  // 专门用于粘贴内容到Reddit的方法
+  async pasteContentToReddit(data) {
+    console.log("🚀 开始粘贴内容到Reddit...");
+    console.log("📊 要粘贴的数据:", data);
+    console.log("🔍 当前页面URL:", window.location.href);
+
+    if (!data.content) {
+      console.log("❌ 没有内容可粘贴");
+      this.showNotification("没有内容可粘贴", "error");
+      return;
+    }
+
+    try {
+      // 检测页面类型
+      const isImageSubmit = window.location.href.includes("type=IMAGE");
+      const isTextSubmit =
+        window.location.href.includes("type=TEXT") ||
+        (window.location.href.includes("/submit") && !isImageSubmit);
+
+      console.log("📋 页面类型检测:", { isImageSubmit, isTextSubmit });
+
+      // 等待页面元素加载
+      await this.sleep(500);
+
+      let contentElement = null;
+      let titleElement = null;
+
+      // 1. 查找标题输入框
+      console.log("🔍 开始查找标题输入框...");
+      titleElement = this.findRedditTitleInput();
+
+      if (titleElement) {
+        console.log("✅ 找到标题输入框:", titleElement);
+        this.fillTitleToElement(titleElement, data.title);
+      } else {
+        console.log("❌ 未找到标题输入框");
+      }
+
+      // 2. 查找内容输入框
+      console.log("🔍 开始查找内容输入框...");
+      contentElement = this.findRedditContentInput();
+
+      if (contentElement) {
+        console.log("✅ 找到内容输入框:", contentElement);
+        this.fillContentToElement(contentElement, data.content);
+        this.showNotification("内容已成功粘贴到Reddit！", "success");
+      } else {
+        console.log("❌ 未找到内容输入框");
+        this.showNotification("未找到内容输入框，请手动复制", "error");
+      }
+    } catch (error) {
+      console.error("❌ 粘贴内容失败:", error);
+      this.showNotification("粘贴内容失败，请手动复制", "error");
+    }
+  }
+
+  // 查找Reddit标题输入框
+  findRedditTitleInput() {
+    console.log("🔍 查找Reddit标题输入框...");
+
+    // 首先尝试直接查找
+    let titleElement = document.getElementById("innerTextArea");
+    console.log("直接查找 innerTextArea:", titleElement);
+
+    // 如果没找到，尝试在Shadow DOM中查找
+    if (!titleElement) {
+      console.log("直接查找失败，尝试在Shadow DOM中查找...");
+
+      const allElements = document.querySelectorAll("*");
+      const elementsWithShadow = Array.from(allElements).filter(
+        (el) => el.shadowRoot
+      );
+      console.log("找到Shadow DOM元素数量:", elementsWithShadow.length);
+
+      for (const host of elementsWithShadow) {
+        if (host.shadowRoot) {
+          console.log("检查Shadow DOM:", host.tagName);
+
+          titleElement = host.shadowRoot.getElementById("innerTextArea");
+          if (titleElement) {
+            console.log("在Shadow DOM中找到innerTextArea:", titleElement);
+            break;
+          }
+        }
+      }
+    }
+
+    return titleElement;
+  }
+
+  // 查找Reddit内容输入框
+  findRedditContentInput() {
+    console.log("🔍 查找Reddit内容输入框...");
+
+    const contentSelectors = [
+      'shreddit-composer[name="optionalBody"] div[slot="rte"]',
+      'shreddit-composer div[slot="rte"][contenteditable="true"]',
+      'div[slot="rte"][contenteditable="true"]',
+      'div[data-lexical-editor="true"][contenteditable="true"]',
+      'div[aria-label*="Body text"][contenteditable="true"]',
+      'div[role="textbox"][contenteditable="true"]',
+      'div[contenteditable="true"]',
+    ];
+
+    let contentElement = null;
+
+    // 首先尝试在Shadow DOM中查找
+    console.log("尝试在Shadow DOM中查找内容编辑器...");
+    const allElements = document.querySelectorAll("*");
+    const elementsWithShadow = Array.from(allElements).filter(
+      (el) => el.shadowRoot
+    );
+    console.log("找到Shadow DOM元素数量:", elementsWithShadow.length);
+
+    for (const host of elementsWithShadow) {
+      if (host.shadowRoot) {
+        console.log("检查Shadow DOM:", host.tagName);
+
+        for (const selector of contentSelectors) {
+          const element = host.shadowRoot.querySelector(selector);
+          if (element && element.contentEditable === "true") {
+            console.log("在Shadow DOM中找到内容编辑器:", selector, element);
+            contentElement = element;
+            break;
+          }
+        }
+        if (contentElement) break;
+      }
+    }
+
+    // 如果Shadow DOM中没找到，尝试直接查找
+    if (!contentElement) {
+      console.log("Shadow DOM中未找到，尝试直接查找...");
+      for (const selector of contentSelectors) {
+        const element = document.querySelector(selector);
+        console.log(`选择器 ${selector}:`, element);
+        if (element && element.contentEditable === "true") {
+          console.log("找到内容输入框:", selector, element);
+          contentElement = element;
+          break;
+        }
+      }
+    }
+
+    return contentElement;
+  }
+
+  // 填充标题到元素
+  fillTitleToElement(titleElement, title) {
+    console.log("📝 开始填充标题到元素:", titleElement, title);
+
+    if (!title || !titleElement) {
+      console.log("❌ 标题或元素为空");
+      return;
+    }
+
+    try {
+      if (
+        titleElement.tagName.toLowerCase() === "div" &&
+        titleElement.contentEditable === "true"
+      ) {
+        // contenteditable div
+        console.log("使用contenteditable div方法填充标题");
+        titleElement.focus();
+        titleElement.textContent = "";
+        setTimeout(() => {
+          titleElement.textContent = title;
+          titleElement.dispatchEvent(new Event("input", { bubbles: true }));
+          titleElement.dispatchEvent(new Event("blur", { bubbles: true }));
+        }, 100);
+      } else {
+        // textarea或input
+        console.log("使用textarea/input方法填充标题");
+        titleElement.focus();
+        titleElement.value = "";
+        setTimeout(() => {
+          titleElement.value = title;
+          titleElement.dispatchEvent(new Event("input", { bubbles: true }));
+          titleElement.dispatchEvent(new Event("change", { bubbles: true }));
+          titleElement.dispatchEvent(new Event("keyup", { bubbles: true }));
+          titleElement.dispatchEvent(new Event("blur", { bubbles: true }));
+        }, 100);
+      }
+
+      console.log("✅ 标题填充完成");
+    } catch (error) {
+      console.error("❌ 填充标题失败:", error);
+    }
+  }
+
+  // 填充内容到Reddit富文本编辑器
+  fillContentToElement(contentElement, content) {
+    console.log("开始填充内容到元素:", contentElement, content);
+
+    // 对于Lexical编辑器，使用更精确的方法
+    if (contentElement.getAttribute("data-lexical-editor") === "true") {
+      console.log("检测到Lexical编辑器，使用专门的方法...");
+
+      try {
+        // 方法1: 清空现有内容并插入新内容
+        contentElement.innerHTML = "";
+
+        // 创建正确的DOM结构
+        const paragraph = document.createElement("p");
+        paragraph.className = "first:mt-0 last:mb-0";
+        paragraph.textContent = content;
+        contentElement.appendChild(paragraph);
+
+        console.log("使用Lexical DOM结构方法填充内容");
+
+        // 触发Lexical编辑器事件
+        const inputEvent = new InputEvent("input", {
+          bubbles: true,
+          cancelable: true,
+          inputType: "insertText",
+          data: content,
+        });
+        contentElement.dispatchEvent(inputEvent);
+      } catch (e) {
+        console.log("Lexical方法失败，尝试通用方法:", e);
+
+        // 方法2: 使用execCommand
+        try {
+          contentElement.focus();
+          document.execCommand("selectAll", false, null);
+          document.execCommand("delete", false, null);
+          document.execCommand("insertText", false, content);
+          console.log("使用execCommand填充内容成功");
+        } catch (e2) {
+          console.log("execCommand也失败，使用直接设置:", e2);
+          contentElement.textContent = content;
+        }
+      }
+    } else {
+      // 对于普通contenteditable元素
+      console.log("使用普通contenteditable方法...");
+
+      try {
+        // 先清空
+        contentElement.innerHTML = "";
+        contentElement.textContent = content;
+
+        // 使用execCommand确保正确插入
+        contentElement.focus();
+        document.execCommand("selectAll", false, null);
+        document.execCommand("delete", false, null);
+        document.execCommand("insertText", false, content);
+
+        console.log("使用execCommand填充内容成功");
+      } catch (e) {
+        console.log("execCommand失败，使用直接设置:", e);
+        contentElement.textContent = content;
+      }
+    }
+
+    // 触发多种事件确保Reddit识别
+    const events = [
+      new Event("focus", { bubbles: true }),
+      new Event("input", { bubbles: true }),
+      new Event("change", { bubbles: true }),
+      new Event("blur", { bubbles: true }),
+      new KeyboardEvent("keydown", { bubbles: true }),
+      new KeyboardEvent("keyup", { bubbles: true }),
+    ];
+
+    events.forEach((event) => {
+      contentElement.dispatchEvent(event);
+    });
+
+    console.log(
+      "内容填充完成，当前内容:",
+      contentElement.textContent || contentElement.innerHTML
+    );
+  }
+
   // 从URL复制图片到剪贴板（使用你提供的方法）
   async copyImageFromURL(imageUrl) {
     try {
@@ -1527,37 +1717,29 @@ class XHSNoteExtractor {
         cancelable: true,
       });
 
-      // 优化粘贴策略：只在最合适的目标上触发一次
-      console.log("🔄 寻找最佳粘贴目标...");
-      
-      // 尝试找到当前聚焦的元素或文本输入区域
-      let targetElement = document.activeElement;
-      
-      // 如果没有聚焦元素，尝试找到文本输入区域
-      if (!targetElement || targetElement === document.body) {
-        const textInputs = document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]');
-        if (textInputs.length > 0) {
-          targetElement = textInputs[0];
-        }
+      // 在多个位置触发事件
+      console.log("🔄 在window上触发事件...");
+      window.dispatchEvent(pasteEvent);
+      window.dispatchEvent(keyDownEvent);
+      window.dispatchEvent(keyUpEvent);
+
+      console.log("🔄 在document上触发事件...");
+      document.dispatchEvent(pasteEvent);
+      document.dispatchEvent(keyDownEvent);
+      document.dispatchEvent(keyUpEvent);
+
+      console.log("🔄 在document.body上触发事件...");
+      if (document.body) {
+        document.body.dispatchEvent(pasteEvent);
+        document.body.dispatchEvent(keyDownEvent);
+        document.body.dispatchEvent(keyUpEvent);
       }
-      
-      // 如果还是没找到合适的目标，使用document.body
-      if (!targetElement) {
-        targetElement = document.body;
-      }
-      
-      console.log("🎯 选择的粘贴目标:", targetElement.tagName, targetElement.className);
-      
-      // 聚焦目标元素
-      if (targetElement.focus) {
-        targetElement.focus();
-      }
-      
-      // 只在选定的目标元素上触发一次粘贴事件
-      console.log("🔄 在目标元素上触发粘贴事件...");
-      targetElement.dispatchEvent(pasteEvent);
-      targetElement.dispatchEvent(keyDownEvent);
-      targetElement.dispatchEvent(keyUpEvent);
+
+      // 尝试在document.documentElement上触发事件
+      console.log("🔄 在document.documentElement上触发事件...");
+      document.documentElement.dispatchEvent(pasteEvent);
+      document.documentElement.dispatchEvent(keyDownEvent);
+      document.documentElement.dispatchEvent(keyUpEvent);
 
       console.log("✅ 已触发所有粘贴事件");
 
