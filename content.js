@@ -413,9 +413,7 @@ class XHSNoteExtractor {
               } 张</span>
             </div>
           </div>
-          <button class="xhs-extractor-download" id="reddit-download-btn">使用此内容</button>
-          <button class="xhs-extractor-download" id="reddit-paste-btn" style="background: #ff6b6b; margin-left: 8px;">📋 粘贴图片</button>
-          <button class="xhs-extractor-download" id="reddit-paste-content-btn" style="background: #4CAF50; margin-left: 8px;">📝 粘贴内容</button>
+          <button class="xhs-extractor-download" id="reddit-download-btn" style="text-align: center; display: flex; align-items: center; justify-content: center;">使用此内容</button>
         </div>
       `;
     } else {
@@ -441,10 +439,6 @@ class XHSNoteExtractor {
   setupRedditPanelEvents(data) {
     const header = this.panel.querySelector(".xhs-extractor-header");
     const downloadBtn = this.panel.querySelector("#reddit-download-btn");
-    const pasteBtn = this.panel.querySelector("#reddit-paste-btn");
-    const pasteContentBtn = this.panel.querySelector(
-      "#reddit-paste-content-btn"
-    );
     header.addEventListener("mousedown", (e) => this.handleDrag(e));
 
     if (downloadBtn && data) {
@@ -468,34 +462,6 @@ class XHSNoteExtractor {
         } else {
           console.log("⚠️ 没有图片数据可粘贴");
         }
-      });
-    }
-    if (pasteBtn && data) {
-      pasteBtn.addEventListener("click", async () => {
-        console.log("🖼️ 用户点击粘贴图片按钮");
-        console.log("📊 数据:", data);
-
-        if (data.images && data.images.length > 0) {
-          console.log(`🖼️ 开始处理 ${data.images.length} 张图片`);
-          await this.prepareImagesForPasting(data);
-        } else {
-          console.log("⚠️ 没有图片数据可粘贴");
-          this.showNotification("没有图片数据可粘贴", "error");
-        }
-      });
-    }
-    if (pasteContentBtn && data) {
-      pasteContentBtn.addEventListener("click", async () => {
-        console.log("📝 用户点击粘贴内容按钮");
-        
-        // 获取最新的存储数据
-        const latestData = await this.getStoredData();
-        const dataToUse = latestData || data;
-        
-        console.log("📊 使用的数据:", dataToUse);
-        console.log("🔄 数据来源:", latestData ? "最新存储数据" : "面板创建时数据");
-        
-        await this.pasteContentToReddit(dataToUse);
       });
     }
   }
