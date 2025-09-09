@@ -235,6 +235,11 @@ class XHSNoteExtractor {
   }
 
   init() {
+    this.checkAndCreatePanel();
+    this.setupUrlChangeListener();
+  }
+
+  checkAndCreatePanel() {
     if (this.isRedditSubmitPage()) {
       this.createRedditPanel();
       // 监听存储变化，实时更新Reddit页面内容
@@ -242,6 +247,48 @@ class XHSNoteExtractor {
     } else {
       this.createPanel();
     }
+  }
+
+  setupUrlChangeListener() {
+    // 监听URL变化（用于SPA页面导航）
+    let currentUrl = window.location.href;
+    
+    // 使用MutationObserver监听DOM变化，间接检测URL变化
+    const observer = new MutationObserver(() => {
+      if (window.location.href !== currentUrl) {
+        currentUrl = window.location.href;
+        console.log('🔄 检测到URL变化:', currentUrl);
+        
+        // 移除现有面板
+        const existingPanel = document.querySelector('.xhs-extractor-panel');
+        if (existingPanel) {
+          existingPanel.remove();
+        }
+        
+        // 延迟重新检查并创建面板，等待页面内容加载
+        setTimeout(() => {
+          this.checkAndCreatePanel();
+        }, 1000);
+      }
+    });
+    
+    // 监听整个document的变化
+    observer.observe(document, {
+      childList: true,
+      subtree: true
+    });
+    
+    // 同时监听popstate事件（浏览器前进后退）
+    window.addEventListener('popstate', () => {
+      console.log('🔄 检测到popstate事件');
+      setTimeout(() => {
+        const existingPanel = document.querySelector('.xhs-extractor-panel');
+        if (existingPanel) {
+          existingPanel.remove();
+        }
+        this.checkAndCreatePanel();
+      }, 1000);
+    });
   }
 
   setupStorageListener() {
