@@ -28,11 +28,60 @@ class XHSNoteExtractor {
     // 添加悬浮球样式类
     this.panel.classList.add('xhs-extractor-minimized');
     
-    // 绑定悬浮球点击事件
+    // 绑定悬浮球点击和拖拽事件
     const floatingBall = this.panel.querySelector('#xhs-floating-ball');
     if (floatingBall) {
-      floatingBall.addEventListener('click', () => {
-        this.restorePanel();
+      let isDragging = false;
+      let dragStartTime = 0;
+      let startX, startY, initialX, initialY;
+      
+      floatingBall.addEventListener('mousedown', (e) => {
+        isDragging = false;
+        dragStartTime = Date.now();
+        startX = e.clientX;
+        startY = e.clientY;
+        
+        const rect = this.panel.getBoundingClientRect();
+        initialX = rect.left;
+        initialY = rect.top;
+        
+        e.preventDefault();
+        
+        const handleMouseMove = (e) => {
+          const deltaX = e.clientX - startX;
+          const deltaY = e.clientY - startY;
+          
+          // 如果移动距离超过5px，认为是拖拽
+          if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+            isDragging = true;
+          }
+          
+          if (isDragging) {
+            const newX = initialX + deltaX;
+            const newY = initialY + deltaY;
+            
+            // 限制在视窗范围内
+            const maxX = window.innerWidth - 50;
+            const maxY = window.innerHeight - 50;
+            
+            this.panel.style.left = Math.max(0, Math.min(newX, maxX)) + 'px';
+            this.panel.style.top = Math.max(0, Math.min(newY, maxY)) + 'px';
+            this.panel.style.right = 'auto';
+          }
+        };
+        
+        const handleMouseUp = () => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+          
+          // 如果没有拖拽且点击时间短，则恢复面板
+          if (!isDragging && Date.now() - dragStartTime < 200) {
+            this.restorePanel();
+          }
+        };
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
       });
     }
   }

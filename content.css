@@ -93,12 +93,16 @@
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  cursor: pointer;
+  cursor: move;
   background: linear-gradient(135deg, #ff2442 0%, #ff4757 100%);
   color: white;
   border-radius: 50%;
   transition: all 0.3s ease;
   user-select: none;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .xhs-extractor-floating-ball:hover {
