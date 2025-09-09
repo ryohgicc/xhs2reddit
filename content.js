@@ -88,17 +88,15 @@ class XHSNoteExtractor {
         await navigator.clipboard.write([clipboardItem]);
         console.log(`✅ 第 ${i + 1} 张图片已复制到剪贴板`);
         
-        // 立即粘贴（除了最后一张）
-        if (i < imageBlobs.length - 1) {
-          await this.simulatePaste();
-          console.log(`📌 第 ${i + 1} 张图片已粘贴`);
-          
-          // 添加延迟避免操作过快
-          await this.sleep(500);
-        }
+        // 立即粘贴每张图片
+        await this.simulatePaste();
+        console.log(`📌 第 ${i + 1} 张图片已粘贴`);
+        
+        // 添加延迟避免操作过快
+        await this.sleep(500);
       }
       
-      console.log(`✅ 成功处理 ${imageBlobs.length} 张图片，最后一张在剪贴板中等待粘贴`);
+      console.log(`✅ 成功处理并粘贴 ${imageBlobs.length} 张图片`);
       return true;
     } catch (error) {
       console.error("❌ 逐个复制粘贴图片失败:", error);
@@ -304,7 +302,7 @@ class XHSNoteExtractor {
   isRedditSubmitPage() {
     return (
       window.location.href.includes("reddit.com") &&
-      window.location.href.includes("/submit/")
+      (window.location.href.includes("/submit/") || window.location.href.includes("/submit?"))
     );
   }
 
