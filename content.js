@@ -8,6 +8,54 @@ class XHSNoteExtractor {
     this.init();
   }
 
+  minimizePanel() {
+    console.log("🔽 隐藏面板");
+    
+    // 保存当前面板状态
+    this.panelContent = this.panel.innerHTML;
+    this.panelPosition = {
+      top: this.panel.style.top || '100px',
+      right: this.panel.style.right || '20px'
+    };
+    
+    // 创建悬浮球
+    this.panel.innerHTML = `
+      <div class="xhs-extractor-floating-ball" id="xhs-floating-ball">
+        📋
+      </div>
+    `;
+    
+    // 添加悬浮球样式类
+    this.panel.classList.add('xhs-extractor-minimized');
+    
+    // 绑定悬浮球点击事件
+    const floatingBall = this.panel.querySelector('#xhs-floating-ball');
+    if (floatingBall) {
+      floatingBall.addEventListener('click', () => {
+        this.restorePanel();
+      });
+    }
+  }
+
+  restorePanel() {
+    console.log("🔼 恢复面板");
+    
+    // 恢复面板内容
+    this.panel.innerHTML = this.panelContent;
+    
+    // 移除悬浮球样式类
+    this.panel.classList.remove('xhs-extractor-minimized');
+    
+    // 恢复位置
+    this.panel.style.top = this.panelPosition.top;
+    this.panel.style.right = this.panelPosition.right;
+    
+    // 重新绑定事件
+    this.getStoredData().then(data => {
+      this.setupRedditPanelEvents(data);
+    });
+  }
+
   // 准备图片用于粘贴
   async prepareImagesForPasting(data) {
     if (!data.images || data.images.length === 0) {
@@ -383,7 +431,10 @@ class XHSNoteExtractor {
       this.panel.innerHTML = `
         <div class="xhs-extractor-header">
           <h3 class="xhs-extractor-title">小红书笔记内容</h3>
-          <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          <div class="xhs-extractor-header-buttons">
+            <button class="xhs-extractor-minimize" id="xhs-minimize-btn">−</button>
+            <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          </div>
         </div>
         <div class="xhs-extractor-result">
           <div class="xhs-extractor-info">
@@ -439,7 +490,15 @@ class XHSNoteExtractor {
   setupRedditPanelEvents(data) {
     const header = this.panel.querySelector(".xhs-extractor-header");
     const downloadBtn = this.panel.querySelector("#reddit-download-btn");
+    const minimizeBtn = this.panel.querySelector("#xhs-minimize-btn");
     header.addEventListener("mousedown", (e) => this.handleDrag(e));
+
+    // 隐藏按钮事件
+    if (minimizeBtn) {
+      minimizeBtn.addEventListener("click", () => {
+        this.minimizePanel();
+      });
+    }
 
     if (downloadBtn && data) {
       downloadBtn.addEventListener("click", async () => {

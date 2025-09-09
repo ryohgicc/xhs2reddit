@@ -41,6 +41,14 @@
   font-size: 18px;
 }
 
+/* 头部按钮容器 */
+.xhs-extractor-header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.xhs-extractor-minimize,
 .xhs-extractor-close {
   background: rgba(255, 255, 255, 0.2);
   border: none;
@@ -57,9 +65,45 @@
   transition: all 0.2s ease;
 }
 
+.xhs-extractor-minimize {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.xhs-extractor-minimize:hover,
 .xhs-extractor-close:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.1);
+}
+
+/* 悬浮球样式 */
+.xhs-extractor-minimized {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.xhs-extractor-floating-ball {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ff2442 0%, #ff4757 100%);
+  color: white;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.xhs-extractor-floating-ball:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 16px rgba(255, 36, 66, 0.4);
 }
 
 /* 面板内容 */
