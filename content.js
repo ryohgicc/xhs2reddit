@@ -77,25 +77,34 @@ class XHSNoteExtractor {
   // 批量复制多张图片到剪贴板
   async copyMultipleImagesToClipboard(imageBlobs) {
     try {
-      console.log(`🔄 开始批量复制 ${imageBlobs.length} 张图片到剪贴板...`);
+      console.log(`🔄 开始逐个复制粘贴 ${imageBlobs.length} 张图片...`);
 
-      // 创建多个ClipboardItem
-      const clipboardItems = [];
       for (let i = 0; i < imageBlobs.length; i++) {
         const blob = imageBlobs[i];
-        const item = new ClipboardItem({
+        console.log(`📋 正在复制第 ${i + 1}/${imageBlobs.length} 张图片`);
+        
+        // 复制单张图片到剪贴板
+        const clipboardItem = new ClipboardItem({
           [blob.type]: blob,
         });
-        clipboardItems.push(item);
-        console.log(`✅ 第 ${i + 1} 张图片已添加到剪贴板项目`);
+        
+        await navigator.clipboard.write([clipboardItem]);
+        console.log(`✅ 第 ${i + 1} 张图片已复制到剪贴板`);
+        
+        // 立即粘贴（除了最后一张）
+        if (i < imageBlobs.length - 1) {
+          await this.simulatePaste();
+          console.log(`📌 第 ${i + 1} 张图片已粘贴`);
+          
+          // 添加延迟避免操作过快
+          await this.sleep(500);
+        }
       }
-
-      // 一次性写入所有图片到剪贴板
-      await navigator.clipboard.write(clipboardItems);
-      console.log(`✅ 成功将 ${imageBlobs.length} 张图片复制到剪贴板`);
+      
+      console.log(`✅ 成功处理 ${imageBlobs.length} 张图片，最后一张在剪贴板中等待粘贴`);
       return true;
     } catch (error) {
-      console.error("❌ 批量复制图片到剪贴板失败:", error);
+      console.error("❌ 逐个复制粘贴图片失败:", error);
       return false;
     }
   }
