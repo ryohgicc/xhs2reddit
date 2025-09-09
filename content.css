@@ -312,6 +312,80 @@
   }
 }
 
+/* 版主建议模块样式 */
+.xhs-extractor-moderator-suggestion {
+  margin: 16px 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border-left: 4px solid #ff2442;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.xhs-extractor-moderator-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.xhs-extractor-moderator-icon {
+  font-size: 18px;
+}
+
+.xhs-extractor-moderator-title {
+  font-size: 14px;
+  color: #ff2442;
+  font-weight: 600;
+}
+
+.xhs-extractor-moderator-content {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #495057;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  white-space: pre-wrap;
+}
+
+/* 暗色模式下的版主建议样式 */
+@media (prefers-color-scheme: dark) {
+  .xhs-extractor-moderator-suggestion {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    border-left-color: #ff4757;
+  }
+  
+  .xhs-extractor-moderator-header {
+    color: #ecf0f1;
+  }
+  
+  .xhs-extractor-moderator-title {
+    color: #ff4757;
+  }
+  
+  .xhs-extractor-moderator-content {
+    background: #34495e;
+    color: #bdc3c7;
+    border-color: #4a5568;
+  }
+}
+  
+  .xhs-extractor-download {
+    background: #333;
+    color: #ff6b6b;
+    border-color: #ff6b6b;
+  }
+  
+  .xhs-extractor-download:hover {
+    background: #ff6b6b;
+    color: #1a1a1a;
+  }
+}
+
 /* Reddit页面特定样式 */
 .xhs-extractor-content-preview {
   background: #f8f9fa;

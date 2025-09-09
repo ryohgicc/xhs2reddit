@@ -403,6 +403,44 @@ class XHSNoteExtractor {
     );
   }
 
+  // 检测并提取版主建议
+  extractModeratorSuggestion() {
+    console.log("🔍 检测版主建议...");
+    
+    // 查找版主建议的容器
+    const moderatorContainer = document.querySelector('.p-md.flex.flex-col.gap-xs');
+    if (!moderatorContainer) {
+      console.log("❌ 未找到版主建议容器");
+      return null;
+    }
+    
+    // 提取社区名称
+    const communityHeader = moderatorContainer.querySelector('h2.font-semibold.text-neutral-content-weak.uppercase.text-12.my-2xs');
+    let communityName = '';
+    if (communityHeader) {
+      const headerText = communityHeader.textContent.trim();
+      const match = headerText.match(/r\/([\w]+)/);
+      if (match) {
+        communityName = match[1];
+      }
+    }
+    
+    // 提取建议内容
+    const suggestionContent = moderatorContainer.querySelector('.flex.m-0.whitespace-pre-wrap');
+    const suggestion = suggestionContent ? suggestionContent.textContent.trim() : '';
+    
+    if (communityName && suggestion) {
+      console.log(`✅ 找到版主建议 - 社区: r/${communityName}`);
+      return {
+        community: communityName,
+        suggestion: suggestion
+      };
+    }
+    
+    console.log("❌ 未找到完整的版主建议信息");
+    return null;
+  }
+
   createPanel() {
     if (document.querySelector(".xhs-extractor-panel")) return;
 
@@ -475,6 +513,9 @@ class XHSNoteExtractor {
     this.panel = document.createElement("div");
     this.panel.className = "xhs-extractor-panel";
 
+    // 检测版主建议
+    const moderatorSuggestion = this.extractModeratorSuggestion();
+    
     if (lastExtractedData) {
       // 显示上次提取的内容
       this.panel.innerHTML = `
@@ -485,6 +526,16 @@ class XHSNoteExtractor {
             <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
           </div>
         </div>
+        ${moderatorSuggestion ? `
+        <div class="xhs-extractor-moderator-suggestion">
+          <div class="xhs-extractor-moderator-header">
+            <span class="xhs-extractor-moderator-icon">👮‍♂️</span>
+            <span class="xhs-extractor-moderator-title">r/${moderatorSuggestion.community} 版主建议</span>
+          </div>
+          <div class="xhs-extractor-moderator-content">
+            ${moderatorSuggestion.suggestion}
+          </div>
+        </div>` : ''}
         <div class="xhs-extractor-result">
           <div class="xhs-extractor-info">
             <div class="xhs-extractor-info-item">
@@ -521,8 +572,21 @@ class XHSNoteExtractor {
       this.panel.innerHTML = `
         <div class="xhs-extractor-header">
           <h3 class="xhs-extractor-title">小红书笔记搬运助手</h3>
-          <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          <div class="xhs-extractor-header-buttons">
+            <button class="xhs-extractor-minimize" id="xhs-minimize-btn">−</button>
+            <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+          </div>
         </div>
+        ${moderatorSuggestion ? `
+        <div class="xhs-extractor-moderator-suggestion">
+          <div class="xhs-extractor-moderator-header">
+            <span class="xhs-extractor-moderator-icon">👮‍♂️</span>
+            <span class="xhs-extractor-moderator-title">r/${moderatorSuggestion.community} 版主建议</span>
+          </div>
+          <div class="xhs-extractor-moderator-content">
+            ${moderatorSuggestion.suggestion}
+          </div>
+        </div>` : ''}
         <div class="xhs-extractor-content">
           <div class="xhs-extractor-tip">
             <p>请先到小红书复制一份笔记</p>
