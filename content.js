@@ -57,11 +57,8 @@ class XHSNoteExtractor {
 
       console.log(`✅ 成功下载 ${imageBlobs.length} 张图片，开始粘贴...`);
 
-      // 将所有图片一次性复制到剪贴板
+      // 将所有图片逐个复制粘贴到剪贴板
       await this.copyMultipleImagesToClipboard(imageBlobs);
-
-      // 执行一次粘贴操作
-      await this.simulatePaste();
 
       console.log("🎉 所有图片粘贴完成");
       this.showNotification(
