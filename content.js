@@ -1782,29 +1782,13 @@ class XHSNoteExtractor {
         cancelable: true,
       });
 
-      // 在多个位置触发事件
-      console.log("🔄 在window上触发事件...");
-      window.dispatchEvent(pasteEvent);
-      window.dispatchEvent(keyDownEvent);
-      window.dispatchEvent(keyUpEvent);
-
-      console.log("🔄 在document上触发事件...");
+      // 只在document上触发一次事件，避免重复粘贴
+      console.log("🔄 在document上触发粘贴事件...");
       document.dispatchEvent(pasteEvent);
+      
+      console.log("🔄 在document上触发键盘事件...");
       document.dispatchEvent(keyDownEvent);
       document.dispatchEvent(keyUpEvent);
-
-      console.log("🔄 在document.body上触发事件...");
-      if (document.body) {
-        document.body.dispatchEvent(pasteEvent);
-        document.body.dispatchEvent(keyDownEvent);
-        document.body.dispatchEvent(keyUpEvent);
-      }
-
-      // 尝试在document.documentElement上触发事件
-      console.log("🔄 在document.documentElement上触发事件...");
-      document.documentElement.dispatchEvent(pasteEvent);
-      document.documentElement.dispatchEvent(keyDownEvent);
-      document.documentElement.dispatchEvent(keyUpEvent);
 
       console.log("✅ 已触发所有粘贴事件");
 
