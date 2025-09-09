@@ -441,6 +441,73 @@ class XHSNoteExtractor {
     return null;
   }
 
+  extractSubredditRules() {
+    console.log("📋 检测板块规则...");
+    
+    // 查找规则容器
+    const rulesContainer = document.querySelector('.px-md.text-neutral-content-weak');
+    if (!rulesContainer) {
+      console.log("❌ 未找到规则容器");
+      return null;
+    }
+    
+    // 提取社区名称
+    const titleElement = rulesContainer.querySelector('h2.uppercase.text-12.font-semibold .i18n-translatable-text');
+    let communityName = '';
+    if (titleElement) {
+      const titleText = titleElement.textContent.trim();
+      const match = titleText.match(/r\/(\w+)\s*规则/);
+      if (match) {
+        communityName = match[1];
+      }
+    }
+    
+    // 提取规则列表
+    const rules = [];
+    const ruleItems = rulesContainer.querySelectorAll('li[role="presentation"]');
+    
+    ruleItems.forEach((item, index) => {
+      // 提取规则编号
+      const numberElement = item.querySelector('.text-neutral-content-weak.text-14.font-normal');
+      const ruleNumber = numberElement ? numberElement.textContent.trim() : (index + 1).toString();
+      
+      // 提取规则标题
+      const titleElement = item.querySelector('h2.i18n-translatable-text');
+      const ruleTitle = titleElement ? titleElement.textContent.trim() : '';
+      
+      // 提取规则详细内容（如果展开的话）
+      const detailsElement = item.closest('details');
+      let ruleContent = '';
+      if (detailsElement && detailsElement.hasAttribute('open')) {
+        const contentDiv = detailsElement.querySelector('.i18n-translatable-text.ml-xl.mb-2xs');
+        if (contentDiv) {
+          // 提取文本内容，去除HTML标签
+          const textContent = contentDiv.textContent || contentDiv.innerText || '';
+          ruleContent = textContent.trim();
+        }
+      }
+      
+      if (ruleTitle) {
+        rules.push({
+          number: ruleNumber,
+          title: ruleTitle,
+          content: ruleContent
+        });
+      }
+    });
+    
+    if (communityName && rules.length > 0) {
+      console.log(`✅ 找到板块规则 - 社区: r/${communityName}, 规则数量: ${rules.length}`);
+      return {
+        community: communityName,
+        rules: rules
+      };
+    }
+    
+    console.log("❌ 未找到完整的板块规则信息");
+    return null;
+  }
+
   createPanel() {
     if (document.querySelector(".xhs-extractor-panel")) return;
 
@@ -516,6 +583,9 @@ class XHSNoteExtractor {
     // 检测版主建议
     const moderatorSuggestion = this.extractModeratorSuggestion();
     
+    // 检测板块规则
+    const subredditRules = this.extractSubredditRules();
+    
     if (lastExtractedData) {
       // 显示上次提取的内容
       this.panel.innerHTML = `
@@ -534,6 +604,42 @@ class XHSNoteExtractor {
           </div>
           <div class="xhs-extractor-moderator-content">
             ${moderatorSuggestion.suggestion}
+          </div>
+        </div>` : ''}
+        ${subredditRules ? `
+        <div class="xhs-extractor-subreddit-rules">
+          <div class="xhs-extractor-rules-header">
+            <span class="xhs-extractor-rules-icon">📋</span>
+            <span class="xhs-extractor-rules-title">r/${subredditRules.community} 板块规则</span>
+          </div>
+          <div class="xhs-extractor-rules-content">
+            ${subredditRules.rules.map(rule => `
+              <div class="xhs-extractor-rule-item">
+                <div class="xhs-extractor-rule-header">
+                  <span class="xhs-extractor-rule-number">${rule.number}</span>
+                  <span class="xhs-extractor-rule-title">${rule.title}</span>
+                </div>
+                ${rule.content ? `<div class="xhs-extractor-rule-content">${rule.content}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>` : ''}
+        ${subredditRules ? `
+        <div class="xhs-extractor-subreddit-rules">
+          <div class="xhs-extractor-rules-header">
+            <span class="xhs-extractor-rules-icon">📋</span>
+            <span class="xhs-extractor-rules-title">r/${subredditRules.community} 板块规则</span>
+          </div>
+          <div class="xhs-extractor-rules-content">
+            ${subredditRules.rules.map(rule => `
+              <div class="xhs-extractor-rule-item">
+                <div class="xhs-extractor-rule-header">
+                  <span class="xhs-extractor-rule-number">${rule.number}</span>
+                  <span class="xhs-extractor-rule-title">${rule.title}</span>
+                </div>
+                ${rule.content ? `<div class="xhs-extractor-rule-content">${rule.content}</div>` : ''}
+              </div>
+            `).join('')}
           </div>
         </div>` : ''}
         <div class="xhs-extractor-result">

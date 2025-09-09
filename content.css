@@ -305,6 +305,122 @@
     color: #ff6b6b;
     border-color: #ff6b6b;
   }
+}
+
+/* 板块规则模块样式 */
+.xhs-extractor-subreddit-rules {
+  margin: 16px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border-left: 4px solid #007bff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.xhs-extractor-rules-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.xhs-extractor-rules-icon {
+  font-size: 18px;
+}
+
+.xhs-extractor-rules-title {
+  font-size: 14px;
+  color: #007bff;
+  font-weight: 600;
+}
+
+.xhs-extractor-rules-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.xhs-extractor-rule-item {
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.xhs-extractor-rule-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.xhs-extractor-rule-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: #007bff;
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.xhs-extractor-rule-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+  line-height: 1.4;
+  flex: 1;
+}
+
+.xhs-extractor-rule-content {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6c757d;
+  margin-left: 36px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f3f4;
+  white-space: pre-wrap;
+}
+
+/* 暗色模式下的板块规则样式 */
+@media (prefers-color-scheme: dark) {
+  .xhs-extractor-subreddit-rules {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    border-left-color: #3498db;
+  }
+  
+  .xhs-extractor-rules-header {
+    color: #ecf0f1;
+  }
+  
+  .xhs-extractor-rules-title {
+    color: #3498db;
+  }
+  
+  .xhs-extractor-rule-item {
+    background: #34495e;
+    border-color: #4a5568;
+  }
+  
+  .xhs-extractor-rule-number {
+    background: #3498db;
+  }
+  
+  .xhs-extractor-rule-title {
+    color: #ecf0f1;
+  }
+  
+  .xhs-extractor-rule-content {
+    color: #bdc3c7;
+    border-top-color: #4a5568;
+  }
   
   .xhs-extractor-download:hover {
     background: #ff6b6b;
