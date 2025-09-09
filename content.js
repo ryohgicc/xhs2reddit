@@ -1237,7 +1237,7 @@ class XHSNoteExtractor {
 
       if (contentElement) {
         console.log("✅ 找到内容输入框:", contentElement);
-        this.fillContentToElement(contentElement, data.content);
+        await this.fillContentToElement(contentElement, data.content);
         this.showNotification("内容已成功粘贴到Reddit！", "success");
       } else {
         console.log("❌ 未找到内容输入框");
@@ -1384,8 +1384,12 @@ class XHSNoteExtractor {
   }
 
   // 填充内容到Reddit富文本编辑器
-  fillContentToElement(contentElement, content) {
+  async fillContentToElement(contentElement, content) {
     console.log("开始填充内容到元素:", contentElement, content);
+
+    // 先聚焦元素
+    contentElement.focus();
+    await this.sleep(100);
 
     // 对于Lexical编辑器，使用更精确的方法
     if (contentElement.getAttribute("data-lexical-editor") === "true") {
@@ -1394,6 +1398,7 @@ class XHSNoteExtractor {
       try {
         // 方法1: 清空现有内容并插入新内容
         contentElement.innerHTML = "";
+        await this.sleep(50);
 
         // 创建正确的DOM结构
         const paragraph = document.createElement("p");
@@ -1402,6 +1407,7 @@ class XHSNoteExtractor {
         contentElement.appendChild(paragraph);
 
         console.log("使用Lexical DOM结构方法填充内容");
+        await this.sleep(100);
 
         // 触发Lexical编辑器事件
         const inputEvent = new InputEvent("input", {
@@ -1417,8 +1423,10 @@ class XHSNoteExtractor {
         // 方法2: 使用execCommand
         try {
           contentElement.focus();
+          await this.sleep(50);
           document.execCommand("selectAll", false, null);
           document.execCommand("delete", false, null);
+          await this.sleep(50);
           document.execCommand("insertText", false, content);
           console.log("使用execCommand填充内容成功");
         } catch (e2) {
@@ -1433,12 +1441,14 @@ class XHSNoteExtractor {
       try {
         // 先清空
         contentElement.innerHTML = "";
-        contentElement.textContent = content;
-
+        await this.sleep(50);
+        
         // 使用execCommand确保正确插入
         contentElement.focus();
+        await this.sleep(50);
         document.execCommand("selectAll", false, null);
         document.execCommand("delete", false, null);
+        await this.sleep(50);
         document.execCommand("insertText", false, content);
 
         console.log("使用execCommand填充内容成功");
@@ -1448,19 +1458,23 @@ class XHSNoteExtractor {
       }
     }
 
+    // 等待一下再触发事件
+    await this.sleep(100);
+
     // 触发多种事件确保Reddit识别
     const events = [
       new Event("focus", { bubbles: true }),
       new Event("input", { bubbles: true }),
       new Event("change", { bubbles: true }),
-      new Event("blur", { bubbles: true }),
       new KeyboardEvent("keydown", { bubbles: true }),
       new KeyboardEvent("keyup", { bubbles: true }),
+      new Event("blur", { bubbles: true }),
     ];
 
-    events.forEach((event) => {
+    for (const event of events) {
       contentElement.dispatchEvent(event);
-    });
+      await this.sleep(10); // 每个事件之间稍微延迟
+    }
 
     console.log(
       "内容填充完成，当前内容:",
