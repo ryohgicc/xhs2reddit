@@ -84,6 +84,9 @@ class XHSNoteExtractor {
         document.addEventListener('mouseup', handleMouseUp);
       });
     }
+    
+    // 设置弹窗事件监听器
+    this.setupSettingsModalEvents();
   }
 
   restorePanel() {
@@ -633,6 +636,7 @@ class XHSNoteExtractor {
         <div class="xhs-extractor-header">
           <h3 class="xhs-extractor-title">小红书笔记内容</h3>
           <div class="xhs-extractor-header-buttons">
+            <button class="xhs-extractor-settings" id="xhs-settings-btn">⚙️</button>
             <button class="xhs-extractor-minimize" id="xhs-minimize-btn">−</button>
             <button class="xhs-extractor-close" id="xhs-close-btn">×</button>
           </div>
@@ -704,6 +708,7 @@ class XHSNoteExtractor {
         <div class="xhs-extractor-header">
           <h3 class="xhs-extractor-title">小红书笔记搬运助手</h3>
           <div class="xhs-extractor-header-buttons">
+            <button class="xhs-extractor-settings" id="xhs-settings-btn-2">⚙️</button>
             <button class="xhs-extractor-minimize" id="xhs-minimize-btn">−</button>
             <button class="xhs-extractor-close" id="xhs-close-btn-2">×</button>
           </div>
@@ -737,6 +742,7 @@ class XHSNoteExtractor {
     const downloadBtn = this.panel.querySelector("#reddit-download-btn");
     const minimizeBtn = this.panel.querySelector("#xhs-minimize-btn");
     const closeBtn = this.panel.querySelector("#xhs-close-btn") || this.panel.querySelector("#xhs-close-btn-2");
+    const settingsBtn = this.panel.querySelector("#xhs-settings-btn") || this.panel.querySelector("#xhs-settings-btn-2");
     const moderatorHeader = this.panel.querySelector('[data-toggle="moderator"]');
     const rulesHeader = this.panel.querySelector('[data-toggle="rules"]');
     
@@ -753,6 +759,13 @@ class XHSNoteExtractor {
     if (closeBtn) {
       closeBtn.addEventListener("click", () => {
         this.panel.remove();
+      });
+    }
+    
+    // 设置按钮事件
+    if (settingsBtn) {
+      settingsBtn.addEventListener("click", () => {
+        this.showSettingsModal();
       });
     }
     
@@ -2101,6 +2114,113 @@ class XHSNoteExtractor {
     } catch (error) {
       console.error("❌ 模拟粘贴失败:", error);
     }
+  }
+
+  async getSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['apiKey', 'model'], (result) => {
+        resolve({
+          apiKey: result.apiKey || '',
+          model: result.model || 'gpt-3.5-turbo'
+        });
+      });
+    });
+  }
+
+  async saveSettings(settings) {
+    return new Promise((resolve) => {
+      chrome.storage.local.set(settings, () => {
+        resolve();
+      });
+    });
+  }
+
+  async showSettingsModal() {
+    // 移除已存在的设置弹窗
+    const existingModal = document.querySelector('.xhs-extractor-settings-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // 获取当前设置
+    const settings = await this.getSettings();
+
+    // 创建设置弹窗
+    const modal = document.createElement('div');
+    modal.className = 'xhs-extractor-settings-modal';
+    modal.innerHTML = `
+      <div class="xhs-extractor-settings-overlay"></div>
+      <div class="xhs-extractor-settings-content">
+        <div class="xhs-extractor-settings-header">
+          <h3>插件设置</h3>
+          <button class="xhs-extractor-settings-close" id="settings-close-btn">×</button>
+        </div>
+        <div class="xhs-extractor-settings-body">
+          <div class="xhs-extractor-settings-item">
+            <label for="api-key-input">API Key:</label>
+            <input type="password" id="api-key-input" placeholder="请输入您的API Key" value="${settings.apiKey}">
+          </div>
+          <div class="xhs-extractor-settings-item">
+            <label for="model-input">模型:</label>
+            <select id="model-input">
+              <option value="gpt-3.5-turbo" ${settings.model === 'gpt-3.5-turbo' ? 'selected' : ''}>GPT-3.5 Turbo</option>
+              <option value="gpt-4" ${settings.model === 'gpt-4' ? 'selected' : ''}>GPT-4</option>
+              <option value="gpt-4-turbo" ${settings.model === 'gpt-4-turbo' ? 'selected' : ''}>GPT-4 Turbo</option>
+              <option value="claude-3-sonnet" ${settings.model === 'claude-3-sonnet' ? 'selected' : ''}>Claude 3 Sonnet</option>
+              <option value="claude-3-opus" ${settings.model === 'claude-3-opus' ? 'selected' : ''}>Claude 3 Opus</option>
+            </select>
+          </div>
+        </div>
+        <div class="xhs-extractor-settings-footer">
+          <button class="xhs-extractor-settings-save" id="settings-save-btn">保存设置</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+    this.setupSettingsModalEvents(modal);
+  }
+
+  setupSettingsModalEvents(modal) {
+    const overlay = modal.querySelector('.xhs-extractor-settings-overlay');
+    const closeBtn = modal.querySelector('#settings-close-btn');
+    const saveBtn = modal.querySelector('#settings-save-btn');
+    const apiKeyInput = modal.querySelector('#api-key-input');
+    const modelInput = modal.querySelector('#model-input');
+
+    // 关闭弹窗事件
+    const closeModal = () => {
+      modal.remove();
+    };
+
+    overlay.addEventListener('click', closeModal);
+    closeBtn.addEventListener('click', closeModal);
+
+    // 保存设置事件
+    saveBtn.addEventListener('click', async () => {
+      const settings = {
+        apiKey: apiKeyInput.value.trim(),
+        model: modelInput.value
+      };
+
+      try {
+        await this.saveSettings(settings);
+        this.showNotification('设置保存成功！', 'success');
+        closeModal();
+      } catch (error) {
+        console.error('保存设置失败:', error);
+        this.showNotification('设置保存失败，请重试', 'error');
+      }
+    });
+
+    // ESC键关闭弹窗
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleKeyDown);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
   }
 
   showNotification(message, type = "success") {
