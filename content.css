@@ -4,6 +4,7 @@
   top: 100px;
   right: 20px;
   width: 320px;
+  max-height: calc(100vh - 120px);
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
@@ -13,6 +14,8 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
   animation: slideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 面板头部 */
@@ -113,6 +116,9 @@
 /* 面板内容 */
 .xhs-extractor-content {
   padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* 提取按钮 */
@@ -324,6 +330,12 @@
   margin-bottom: 16px;
   font-weight: 600;
   color: #2c3e50;
+  cursor: pointer;
+  user-select: none;
+}
+
+.xhs-extractor-rules-header:hover {
+  color: #007bff;
 }
 
 .xhs-extractor-rules-icon {
@@ -334,12 +346,27 @@
   font-size: 14px;
   color: #007bff;
   font-weight: 600;
+  flex: 1;
+}
+
+.xhs-extractor-collapse-btn {
+  font-size: 12px;
+  transition: transform 0.2s ease;
 }
 
 .xhs-extractor-rules-content {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: all 0.3s ease;
+  max-height: 600px;
+  overflow: hidden;
+}
+
+.xhs-extractor-rules-content.collapsed {
+  max-height: 0;
+  gap: 0;
+  margin-top: -16px;
 }
 
 .xhs-extractor-rule-item {
@@ -445,6 +472,12 @@
   margin-bottom: 12px;
   font-weight: 600;
   color: #2c3e50;
+  cursor: pointer;
+  user-select: none;
+}
+
+.xhs-extractor-moderator-header:hover {
+  color: #ff2442;
 }
 
 .xhs-extractor-moderator-icon {
@@ -455,6 +488,12 @@
   font-size: 14px;
   color: #ff2442;
   font-weight: 600;
+  flex: 1;
+}
+
+.xhs-extractor-collapse-btn {
+  font-size: 12px;
+  transition: transform 0.2s ease;
 }
 
 .xhs-extractor-moderator-content {
@@ -466,6 +505,16 @@
   border-radius: 8px;
   border: 1px solid #dee2e6;
   white-space: pre-wrap;
+  transition: all 0.3s ease;
+  max-height: 500px;
+  overflow: hidden;
+}
+
+.xhs-extractor-moderator-content.collapsed {
+  max-height: 0;
+  padding: 0 12px;
+  border: none;
+  margin-top: -12px;
 }
 
 /* 暗色模式下的版主建议样式 */

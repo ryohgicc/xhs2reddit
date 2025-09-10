@@ -475,14 +475,55 @@ class XHSNoteExtractor {
       const titleElement = item.querySelector('h2.i18n-translatable-text');
       const ruleTitle = titleElement ? titleElement.textContent.trim() : '';
       
-      // 提取规则详细内容（如果展开的话）
-      const detailsElement = item.closest('details');
+      // 提取规则详细内容
       let ruleContent = '';
-      if (detailsElement && detailsElement.hasAttribute('open')) {
-        const contentDiv = detailsElement.querySelector('.i18n-translatable-text.ml-xl.mb-2xs');
+      const detailsElement = item.closest('details');
+      
+      if (detailsElement) {
+        // 查找规则内容容器，支持多种可能的结构
+        let contentDiv = detailsElement.querySelector('.i18n-translatable-text.ml-xl.mb-2xs');
+        
+        // 如果没找到，尝试查找其他可能的内容容器
+        if (!contentDiv) {
+          contentDiv = detailsElement.querySelector('[faceplate-auto-height-animator-content] .i18n-translatable-text.ml-xl.mb-2xs');
+        }
+        
+        // 如果还没找到，尝试查找包含md类的div
+        if (!contentDiv) {
+          contentDiv = detailsElement.querySelector('.md.px-md');
+        }
+        
         if (contentDiv) {
-          // 提取文本内容，去除HTML标签
-          const textContent = contentDiv.textContent || contentDiv.innerText || '';
+          // 提取文本内容，保留基本格式
+          let textContent = '';
+          
+          // 处理列表项
+          const listItems = contentDiv.querySelectorAll('li');
+          if (listItems.length > 0) {
+            const listTexts = Array.from(listItems).map(li => {
+              const text = li.textContent.trim();
+              return text ? `• ${text}` : '';
+            }).filter(text => text);
+            textContent = listTexts.join('\n');
+          } else {
+            // 如果没有列表，直接提取文本内容
+            textContent = contentDiv.textContent || contentDiv.innerText || '';
+          }
+          
+          // 查找链接
+          const links = contentDiv.querySelectorAll('a[href]');
+          if (links.length > 0) {
+            const linkTexts = Array.from(links).map(link => {
+              const linkText = link.textContent.trim();
+              const href = link.getAttribute('href');
+              return linkText && href ? `${linkText}: ${href}` : '';
+            }).filter(text => text);
+            
+            if (linkTexts.length > 0) {
+              textContent += (textContent ? '\n\n' : '') + linkTexts.join('\n');
+            }
+          }
+          
           ruleContent = textContent.trim();
         }
       }
@@ -598,39 +639,23 @@ class XHSNoteExtractor {
         </div>
         ${moderatorSuggestion ? `
         <div class="xhs-extractor-moderator-suggestion">
-          <div class="xhs-extractor-moderator-header">
+          <div class="xhs-extractor-moderator-header" onclick="this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.toggle('collapsed'); this.querySelector('.xhs-extractor-collapse-btn').textContent = this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.contains('collapsed') ? '▶' : '▼';">
             <span class="xhs-extractor-moderator-icon">👮‍♂️</span>
             <span class="xhs-extractor-moderator-title">r/${moderatorSuggestion.community} 版主建议</span>
+            <span class="xhs-extractor-collapse-btn">▶</span>
           </div>
-          <div class="xhs-extractor-moderator-content">
+          <div class="xhs-extractor-moderator-content collapsed">
             ${moderatorSuggestion.suggestion}
           </div>
         </div>` : ''}
         ${subredditRules ? `
         <div class="xhs-extractor-subreddit-rules">
-          <div class="xhs-extractor-rules-header">
+          <div class="xhs-extractor-rules-header" onclick="this.parentElement.querySelector('.xhs-extractor-rules-content').classList.toggle('collapsed'); this.querySelector('.xhs-extractor-collapse-btn').textContent = this.parentElement.querySelector('.xhs-extractor-rules-content').classList.contains('collapsed') ? '▶' : '▼';">
             <span class="xhs-extractor-rules-icon">📋</span>
             <span class="xhs-extractor-rules-title">r/${subredditRules.community} 板块规则</span>
+            <span class="xhs-extractor-collapse-btn">▶</span>
           </div>
-          <div class="xhs-extractor-rules-content">
-            ${subredditRules.rules.map(rule => `
-              <div class="xhs-extractor-rule-item">
-                <div class="xhs-extractor-rule-header">
-                  <span class="xhs-extractor-rule-number">${rule.number}</span>
-                  <span class="xhs-extractor-rule-title">${rule.title}</span>
-                </div>
-                ${rule.content ? `<div class="xhs-extractor-rule-content">${rule.content}</div>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        </div>` : ''}
-        ${subredditRules ? `
-        <div class="xhs-extractor-subreddit-rules">
-          <div class="xhs-extractor-rules-header">
-            <span class="xhs-extractor-rules-icon">📋</span>
-            <span class="xhs-extractor-rules-title">r/${subredditRules.community} 板块规则</span>
-          </div>
-          <div class="xhs-extractor-rules-content">
+          <div class="xhs-extractor-rules-content collapsed">
             ${subredditRules.rules.map(rule => `
               <div class="xhs-extractor-rule-item">
                 <div class="xhs-extractor-rule-header">
@@ -685,11 +710,12 @@ class XHSNoteExtractor {
         </div>
         ${moderatorSuggestion ? `
         <div class="xhs-extractor-moderator-suggestion">
-          <div class="xhs-extractor-moderator-header">
+          <div class="xhs-extractor-moderator-header" onclick="this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.toggle('collapsed'); this.querySelector('.xhs-extractor-collapse-btn').textContent = this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.contains('collapsed') ? '▶' : '▼';">
             <span class="xhs-extractor-moderator-icon">👮‍♂️</span>
             <span class="xhs-extractor-moderator-title">r/${moderatorSuggestion.community} 版主建议</span>
+            <span class="xhs-extractor-collapse-btn">▶</span>
           </div>
-          <div class="xhs-extractor-moderator-content">
+          <div class="xhs-extractor-moderator-content collapsed">
             ${moderatorSuggestion.suggestion}
           </div>
         </div>` : ''}
