@@ -634,12 +634,12 @@ class XHSNoteExtractor {
           <h3 class="xhs-extractor-title">小红书笔记内容</h3>
           <div class="xhs-extractor-header-buttons">
             <button class="xhs-extractor-minimize" id="xhs-minimize-btn">−</button>
-            <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            <button class="xhs-extractor-close" id="xhs-close-btn">×</button>
           </div>
         </div>
         ${moderatorSuggestion ? `
         <div class="xhs-extractor-moderator-suggestion">
-          <div class="xhs-extractor-moderator-header" onclick="this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.toggle('collapsed'); this.querySelector('.xhs-extractor-collapse-btn').textContent = this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.contains('collapsed') ? '▶' : '▼';">
+          <div class="xhs-extractor-moderator-header" data-toggle="moderator">
             <span class="xhs-extractor-moderator-icon">👮‍♂️</span>
             <span class="xhs-extractor-moderator-title">r/${moderatorSuggestion.community} 版主建议</span>
             <span class="xhs-extractor-collapse-btn">▶</span>
@@ -650,7 +650,7 @@ class XHSNoteExtractor {
         </div>` : ''}
         ${subredditRules ? `
         <div class="xhs-extractor-subreddit-rules">
-          <div class="xhs-extractor-rules-header" onclick="this.parentElement.querySelector('.xhs-extractor-rules-content').classList.toggle('collapsed'); this.querySelector('.xhs-extractor-collapse-btn').textContent = this.parentElement.querySelector('.xhs-extractor-rules-content').classList.contains('collapsed') ? '▶' : '▼';">
+          <div class="xhs-extractor-rules-header" data-toggle="rules">
             <span class="xhs-extractor-rules-icon">📋</span>
             <span class="xhs-extractor-rules-title">r/${subredditRules.community} 板块规则</span>
             <span class="xhs-extractor-collapse-btn">▶</span>
@@ -705,12 +705,12 @@ class XHSNoteExtractor {
           <h3 class="xhs-extractor-title">小红书笔记搬运助手</h3>
           <div class="xhs-extractor-header-buttons">
             <button class="xhs-extractor-minimize" id="xhs-minimize-btn">−</button>
-            <button class="xhs-extractor-close" onclick="this.parentElement.parentElement.remove()">×</button>
+            <button class="xhs-extractor-close" id="xhs-close-btn-2">×</button>
           </div>
         </div>
         ${moderatorSuggestion ? `
         <div class="xhs-extractor-moderator-suggestion">
-          <div class="xhs-extractor-moderator-header" onclick="this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.toggle('collapsed'); this.querySelector('.xhs-extractor-collapse-btn').textContent = this.parentElement.querySelector('.xhs-extractor-moderator-content').classList.contains('collapsed') ? '▶' : '▼';">
+          <div class="xhs-extractor-moderator-header" data-toggle="moderator">
             <span class="xhs-extractor-moderator-icon">👮‍♂️</span>
             <span class="xhs-extractor-moderator-title">r/${moderatorSuggestion.community} 版主建议</span>
             <span class="xhs-extractor-collapse-btn">▶</span>
@@ -736,12 +736,43 @@ class XHSNoteExtractor {
     const header = this.panel.querySelector(".xhs-extractor-header");
     const downloadBtn = this.panel.querySelector("#reddit-download-btn");
     const minimizeBtn = this.panel.querySelector("#xhs-minimize-btn");
+    const closeBtn = this.panel.querySelector("#xhs-close-btn") || this.panel.querySelector("#xhs-close-btn-2");
+    const moderatorHeader = this.panel.querySelector('[data-toggle="moderator"]');
+    const rulesHeader = this.panel.querySelector('[data-toggle="rules"]');
+    
     header.addEventListener("mousedown", (e) => this.handleDrag(e));
 
     // 隐藏按钮事件
     if (minimizeBtn) {
       minimizeBtn.addEventListener("click", () => {
         this.minimizePanel();
+      });
+    }
+    
+    // 关闭按钮事件
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        this.panel.remove();
+      });
+    }
+    
+    // 版主建议折叠事件
+    if (moderatorHeader) {
+      moderatorHeader.addEventListener("click", () => {
+        const content = moderatorHeader.parentElement.querySelector('.xhs-extractor-moderator-content');
+        const collapseBtn = moderatorHeader.querySelector('.xhs-extractor-collapse-btn');
+        content.classList.toggle('collapsed');
+        collapseBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+      });
+    }
+    
+    // 板块规则折叠事件
+    if (rulesHeader) {
+      rulesHeader.addEventListener("click", () => {
+        const content = rulesHeader.parentElement.querySelector('.xhs-extractor-rules-content');
+        const collapseBtn = rulesHeader.querySelector('.xhs-extractor-collapse-btn');
+        content.classList.toggle('collapsed');
+        collapseBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
       });
     }
 
