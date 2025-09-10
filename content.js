@@ -671,35 +671,42 @@ class XHSNoteExtractor {
             `).join('')}
           </div>
         </div>` : ''}
-        <div class="xhs-extractor-result">
-          <div class="xhs-extractor-info">
-            <div class="xhs-extractor-info-item">
-              <span class="xhs-extractor-info-label">标题:</span>
-              <span class="xhs-extractor-info-value">${
-                lastExtractedData.title
-              }</span>
-            </div>
-            <div class="xhs-extractor-info-item">
-              <span class="xhs-extractor-info-label">作者:</span>
-              <span class="xhs-extractor-info-value">${
-                lastExtractedData.author || "-"
-              }</span>
-            </div>
-            <div class="xhs-extractor-info-item">
-              <span class="xhs-extractor-info-label">内容:</span>
-              <div class="xhs-extractor-content-preview">${this.truncateText(
-                lastExtractedData.content,
-                200
-              )}</div>
-            </div>
-            <div class="xhs-extractor-info-item">
-              <span class="xhs-extractor-info-label">图片:</span>
-              <span class="xhs-extractor-info-value">${
-                lastExtractedData.stats.imageCount
-              } 张</span>
-            </div>
+        <div class="xhs-extractor-note-content">
+          <div class="xhs-extractor-note-header" data-toggle="note-content">
+            <span class="xhs-extractor-note-icon">📝</span>
+            <span class="xhs-extractor-note-title">笔记内容</span>
+            <span class="xhs-extractor-collapse-btn">▼</span>
           </div>
-          <button class="xhs-extractor-download" id="reddit-download-btn" style="text-align: center; display: flex; align-items: center; justify-content: center;">使用此内容</button>
+          <div class="xhs-extractor-note-body">
+            <div class="xhs-extractor-info">
+              <div class="xhs-extractor-info-item">
+                <span class="xhs-extractor-info-label">标题:</span>
+                <span class="xhs-extractor-info-value">${
+                  lastExtractedData.title
+                }</span>
+              </div>
+              <div class="xhs-extractor-info-item">
+                <span class="xhs-extractor-info-label">作者:</span>
+                <span class="xhs-extractor-info-value">${
+                  lastExtractedData.author || "-"
+                }</span>
+              </div>
+              <div class="xhs-extractor-info-item">
+                <span class="xhs-extractor-info-label">内容:</span>
+                <div class="xhs-extractor-content-preview">${this.truncateText(
+                  lastExtractedData.content,
+                  200
+                )}</div>
+              </div>
+              <div class="xhs-extractor-info-item">
+                <span class="xhs-extractor-info-label">图片:</span>
+                <span class="xhs-extractor-info-value">${
+                  lastExtractedData.stats.imageCount
+                } 张</span>
+              </div>
+            </div>
+            <button class="xhs-extractor-download" id="reddit-download-btn" style="text-align: center; display: flex; align-items: center; justify-content: center;">使用此内容</button>
+          </div>
         </div>
       `;
     } else {
@@ -745,6 +752,7 @@ class XHSNoteExtractor {
     const settingsBtn = this.panel.querySelector("#xhs-settings-btn") || this.panel.querySelector("#xhs-settings-btn-2");
     const moderatorHeader = this.panel.querySelector('[data-toggle="moderator"]');
     const rulesHeader = this.panel.querySelector('[data-toggle="rules"]');
+    const noteContentHeader = this.panel.querySelector('[data-toggle="note-content"]');
     
     header.addEventListener("mousedown", (e) => this.handleDrag(e));
 
@@ -784,6 +792,16 @@ class XHSNoteExtractor {
       rulesHeader.addEventListener("click", () => {
         const content = rulesHeader.parentElement.querySelector('.xhs-extractor-rules-content');
         const collapseBtn = rulesHeader.querySelector('.xhs-extractor-collapse-btn');
+        content.classList.toggle('collapsed');
+        collapseBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+      });
+    }
+    
+    // 笔记内容折叠事件
+    if (noteContentHeader) {
+      noteContentHeader.addEventListener("click", () => {
+        const content = noteContentHeader.parentElement.querySelector('.xhs-extractor-note-body');
+        const collapseBtn = noteContentHeader.querySelector('.xhs-extractor-collapse-btn');
         content.classList.toggle('collapsed');
         collapseBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
       });

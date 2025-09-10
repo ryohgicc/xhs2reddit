@@ -519,6 +519,53 @@
   margin-top: -12px;
 }
 
+/* 笔记内容组件样式 */
+.xhs-extractor-note-content {
+  margin: 16px 20px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border-left: 4px solid #28a745;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.xhs-extractor-note-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+  cursor: pointer;
+  user-select: none;
+}
+
+.xhs-extractor-note-header:hover {
+  color: #28a745;
+}
+
+.xhs-extractor-note-icon {
+  font-size: 18px;
+}
+
+.xhs-extractor-note-title {
+  font-size: 14px;
+  color: #28a745;
+  font-weight: 600;
+  flex: 1;
+}
+
+.xhs-extractor-note-body {
+  transition: all 0.3s ease;
+  max-height: 800px;
+  overflow: hidden;
+}
+
+.xhs-extractor-note-body.collapsed {
+  max-height: 0;
+  margin-top: -12px;
+}
+
 /* 暗色模式下的版主建议样式 */
 @media (prefers-color-scheme: dark) {
   .xhs-extractor-moderator-suggestion {
