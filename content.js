@@ -4,6 +4,7 @@ class XHSNoteExtractor {
     this.panel = null;
     this.isExtracting = false;
     this.extractedData = null;
+    this.cachedPolishResult = null; // 缓存AI润色结果
 
     this.init();
   }
@@ -641,6 +642,11 @@ class XHSNoteExtractor {
             <button class="xhs-extractor-close" id="xhs-close-btn">×</button>
           </div>
         </div>
+        <div class="xhs-extractor-content">
+          <div class="xhs-extractor-ai-buttons">
+            <button class="xhs-extractor-ai-polish" id="ai-polish-btn">🤖 生成AI润色</button>
+            <button class="xhs-extractor-ai-fill" id="ai-fill-btn">📝 填充AI内容</button>
+          </div>
         ${moderatorSuggestion ? `
         <div class="xhs-extractor-moderator-suggestion">
           <div class="xhs-extractor-moderator-header" data-toggle="moderator">
@@ -706,6 +712,7 @@ class XHSNoteExtractor {
               </div>
             </div>
             <button class="xhs-extractor-download" id="reddit-download-btn" style="text-align: center; display: flex; align-items: center; justify-content: center;">使用此内容</button>
+            </div>
           </div>
         </div>
       `;
@@ -742,11 +749,18 @@ class XHSNoteExtractor {
 
     document.body.appendChild(this.panel);
     this.setupRedditPanelEvents(lastExtractedData);
+    
+    // 恢复缓存的AI润色结果
+    if (this.cachedPolishResult) {
+      this.displayPolishResult(this.cachedPolishResult);
+    }
   }
 
   setupRedditPanelEvents(data) {
     const header = this.panel.querySelector(".xhs-extractor-header");
     const downloadBtn = this.panel.querySelector("#reddit-download-btn");
+    const aiPolishBtn = this.panel.querySelector("#ai-polish-btn");
+    const aiFillBtn = this.panel.querySelector("#ai-fill-btn");
     const minimizeBtn = this.panel.querySelector("#xhs-minimize-btn");
     const closeBtn = this.panel.querySelector("#xhs-close-btn") || this.panel.querySelector("#xhs-close-btn-2");
     const settingsBtn = this.panel.querySelector("#xhs-settings-btn") || this.panel.querySelector("#xhs-settings-btn-2");
@@ -828,6 +842,22 @@ class XHSNoteExtractor {
         } else {
           console.log("⚠️ 没有图片数据可粘贴");
         }
+      });
+    }
+
+    // AI润色按钮事件
+    if (aiPolishBtn && data) {
+      aiPolishBtn.addEventListener("click", async () => {
+        console.log("🤖 用户点击AI润色按钮");
+        await this.generateAIPolish(data);
+      });
+    }
+
+    // 填充AI内容按钮事件
+    if (aiFillBtn) {
+      aiFillBtn.addEventListener("click", async () => {
+        console.log("📝 用户点击填充AI内容按钮");
+        await this.fillAIContentToReddit();
       });
     }
   }
@@ -2136,9 +2166,10 @@ class XHSNoteExtractor {
 
   async getSettings() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(['apiKey', 'model'], (result) => {
+      chrome.storage.local.get(['apiKey', 'baseUrl', 'model'], (result) => {
         resolve({
           apiKey: result.apiKey || '',
+          baseUrl: result.baseUrl || 'https://ark.cn-beijing.volces.com/api/v3',
           model: result.model || 'gpt-3.5-turbo'
         });
       });
@@ -2170,7 +2201,7 @@ class XHSNoteExtractor {
       <div class="xhs-extractor-settings-overlay"></div>
       <div class="xhs-extractor-settings-content">
         <div class="xhs-extractor-settings-header">
-          <h3>插件设置</h3>
+          <h3>AI润色设置</h3>
           <button class="xhs-extractor-settings-close" id="settings-close-btn">×</button>
         </div>
         <div class="xhs-extractor-settings-body">
@@ -2179,14 +2210,12 @@ class XHSNoteExtractor {
             <input type="password" id="api-key-input" placeholder="请输入您的API Key" value="${settings.apiKey}">
           </div>
           <div class="xhs-extractor-settings-item">
+            <label for="base-url-input">Base URL:</label>
+            <input type="text" id="base-url-input" placeholder="https://ark.cn-beijing.volces.com/api/v3" value="${settings.baseUrl}">
+          </div>
+          <div class="xhs-extractor-settings-item">
             <label for="model-input">模型:</label>
-            <select id="model-input">
-              <option value="gpt-3.5-turbo" ${settings.model === 'gpt-3.5-turbo' ? 'selected' : ''}>GPT-3.5 Turbo</option>
-              <option value="gpt-4" ${settings.model === 'gpt-4' ? 'selected' : ''}>GPT-4</option>
-              <option value="gpt-4-turbo" ${settings.model === 'gpt-4-turbo' ? 'selected' : ''}>GPT-4 Turbo</option>
-              <option value="claude-3-sonnet" ${settings.model === 'claude-3-sonnet' ? 'selected' : ''}>Claude 3 Sonnet</option>
-              <option value="claude-3-opus" ${settings.model === 'claude-3-opus' ? 'selected' : ''}>Claude 3 Opus</option>
-            </select>
+            <input type="text" id="model-input" placeholder="例如: gpt-3.5-turbo, gpt-4, claude-3-sonnet" value="${settings.model}">
           </div>
         </div>
         <div class="xhs-extractor-settings-footer">
@@ -2204,6 +2233,7 @@ class XHSNoteExtractor {
     const closeBtn = modal.querySelector('#settings-close-btn');
     const saveBtn = modal.querySelector('#settings-save-btn');
     const apiKeyInput = modal.querySelector('#api-key-input');
+    const baseUrlInput = modal.querySelector('#base-url-input');
     const modelInput = modal.querySelector('#model-input');
 
     // 关闭弹窗事件
@@ -2218,7 +2248,8 @@ class XHSNoteExtractor {
     saveBtn.addEventListener('click', async () => {
       const settings = {
         apiKey: apiKeyInput.value.trim(),
-        model: modelInput.value
+        baseUrl: baseUrlInput.value.trim() || 'https://ark.cn-beijing.volces.com/api/v3',
+        model: modelInput.value.trim()
       };
 
       try {
@@ -2239,6 +2270,344 @@ class XHSNoteExtractor {
       }
     };
     document.addEventListener('keydown', handleKeyDown);
+  }
+
+  async generateAIPolish(data) {
+    try {
+      // 获取设置
+      const settings = await this.getSettings();
+      if (!settings.apiKey) {
+        this.showNotification('请先在设置中配置API Key', 'error');
+        return;
+      }
+
+      // 显示加载状态
+      const aiPolishBtn = this.panel.querySelector('#ai-polish-btn');
+      const originalText = aiPolishBtn.textContent;
+      aiPolishBtn.textContent = '🔄 AI润色中...';
+      aiPolishBtn.disabled = true;
+
+      // 获取板块规则和版主建议
+      const moderatorSuggestion = this.extractModeratorSuggestion();
+      const subredditRules = this.extractSubredditRules();
+
+      // 构建提示词
+      const prompt = this.buildPolishPrompt(data, moderatorSuggestion, subredditRules);
+
+      // 调用AI API
+      const polishedContent = await this.callOpenAI(prompt, settings);
+
+      // 缓存润色结果
+      this.cachedPolishResult = polishedContent;
+      
+      // 显示润色结果
+      this.displayPolishResult(polishedContent);
+
+      this.showNotification('AI润色完成！', 'success');
+    } catch (error) {
+      console.error('AI润色失败:', error);
+      this.showNotification('AI润色失败: ' + error.message, 'error');
+    } finally {
+      // 恢复按钮状态
+      const aiPolishBtn = this.panel.querySelector('#ai-polish-btn');
+      if (aiPolishBtn) {
+        aiPolishBtn.textContent = '🤖 生成AI润色';
+        aiPolishBtn.disabled = false;
+      }
+    }
+  }
+
+buildPolishPrompt(data, moderatorSuggestion, subredditRules) {
+    let prompt = `    "# Role": "Reddit文案大师",
+    
+    "## Background": "你是一名资深的Reddit内容创作专家，因长期活跃在Reddit平台，对各个社区的文化、用户偏好和热门内容规律有深刻理解。你接受过新媒体运营、内容营销等专业训练，能够针对不同subreddit制定精准的内容策略。此外，你曾担任过社交媒体经理和内容编辑，擅长捕捉网络热点和用户心理，快速将普通内容转化为引人入胜的热门帖子。由于对Reddit生态的深度研究，你建立了一套成熟的内容优化框架，能够通过标题优化、内容结构调整和情感共鸣等手段，提升帖子的互动率和传播效果。",
+    
+    "## Goals": [
+        "根据用户输入的笔记标题和正文，进行专业的内容润色和优化",
+        "输出符合Reddit平台特色的热门标题，增强点击率和讨论度",
+        "优化正文内容，提升可读性、互动性和传播价值",
+        "确保内容具有真实的人类写作特征，避免AI生成痕迹",
+        "以json格式呈现润色结果，保持格式的一致性"
+    ],
+    
+    "## Rules": [
+        "1. 标题必须简洁有力，控制在合理长度内，体现Reddit社区特色",
+        "2. 内容要符合Reddit社区文化，使用地道的网络表达方式",
+        "3. 保持原文核心信息不变，只进行表达方式和结构的优化",
+        "4. 增强内容的互动性，自然引导用户参与讨论",
+        "5. 避免AI写作的明显特征，保持真实自然的人类语调",
+        "6. 绝对禁用破折号，改用逗号、句号或括号",
+        "7. 避免营销陈词滥调和套话表达",
+        "8. 不使用固定的段落结构模式，根据内容自然安排",
+        "9. 减少副词使用，选择更有力的动词表达",
+        "10. 避免自问自答和诗意过渡语"
+    ],
+    
+    "## Skills": [
+        "具备Reddit平台深度理解能力：",
+        "- 掌握不同subreddit的文化特色和内容偏好，理解Reddit用户的行为习惯和心理特征，熟悉热门帖子的共同特征和传播规律",
+        "具备自然化写作能力：",
+        "- 模拟真实用户的表达习惯和语言风格，融入个人观点和具体案例，保留适度的不完美特征体现人类写作特点",
+        "具备结构灵活化能力：",
+        "- 打破固定的组织模式，根据内容特点灵活安排段落结构，避免机械化的三点式或固定段落数量",
+        "具备语言去套路化能力：",
+        "- 识别并避免AI写作的常见套路，控制副词使用频率，摒弃营销化语言，用自然过渡替代公式化表达"
+    ],
+
+## 原始内容
+标题: ${data.title}
+内容: ${data.content}
+
+`;
+    
+    if (moderatorSuggestion && moderatorSuggestion.suggestion) {
+        prompt += `## 版主建议
+${moderatorSuggestion.suggestion}
+
+`;
+    }
+    
+    if (subredditRules && subredditRules.rules) {
+        prompt += `## 板块规则
+${subredditRules.rules}
+
+`;
+    }
+    
+    prompt += `    "## Workflows": [
+        "1. 仔细分析用户输入的原标题和正文，提取核心信息和情感触点",
+        "2. 识别内容类型和目标受众，选择合适的Reddit社区风格",
+        "3. 重构标题，避免套路化表达，融入真实感和好奇心触发点",
+        "4. 重新组织正文结构，打破固定模式，根据内容自然分段",
+        "5. 优化语言表达，去除AI写作痕迹，增加人性化细节和互动元素",
+        "6. 检查并替换所有违规表达（破折号、套话、过度修饰等）",
+        "7. 请严格按照以下JSON格式返回结果，不要添加任何其他文字:
+{
+  "chinese_title": "润色后的中文标题",
+  "english_title": "Polished English Title",
+  "chinese_content": "润色后的中文内容",
+  "english_content": "Polished English Content"
+}"
+    ]`;
+    
+    return prompt;
+  }
+
+  async callOpenAI(prompt, settings) {
+    if (!settings.apiKey) {
+      throw new Error('请先配置API Key');
+    }
+    
+    if (!settings.model) {
+      throw new Error('请先配置模型名称');
+    }
+
+    const baseUrl = settings.baseUrl || 'https://ark.cn-beijing.volces.com/api/v3';
+    const apiUrl = baseUrl.endsWith('/') ? baseUrl + 'chat/completions' : baseUrl + '/chat/completions';
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 2000
+        })
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error?.message) {
+            errorMessage = errorData.error.message;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // 忽略JSON解析错误，使用默认错误信息
+        }
+        throw new Error(`API请求失败: ${errorMessage}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.choices || result.choices.length === 0) {
+        throw new Error('API返回数据格式错误：缺少choices字段');
+      }
+      
+      const content = result.choices[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error('API返回内容为空');
+      }
+
+      try {
+        return JSON.parse(content);
+      } catch (e) {
+        // 如果不是JSON格式，尝试提取JSON部分
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            return JSON.parse(jsonMatch[0]);
+          } catch (parseError) {
+            throw new Error('AI返回的JSON格式不正确');
+          }
+        }
+        throw new Error('AI返回格式不正确，无法解析JSON');
+      }
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('网络连接失败，请检查网络设置');
+      }
+      throw error;
+    }
+  }
+
+  displayPolishResult(polishedContent) {
+    // 检查是否已存在润色结果区域
+    let existingResult = this.panel.querySelector('.xhs-extractor-polish-result');
+    if (existingResult) {
+      // 如果已存在，更新内容而不是移除
+      const contentDiv = existingResult.querySelector('.xhs-extractor-polish-content');
+      if (contentDiv) {
+        contentDiv.innerHTML = `
+          <div class="xhs-extractor-polish-item">
+            <h4>中文标题</h4>
+            <p class="polish-title-cn">${polishedContent.chinese_title || '未生成'}</p>
+          </div>
+          <div class="xhs-extractor-polish-item">
+            <h4>English Title</h4>
+            <p class="polish-title-en">${polishedContent.english_title || 'Not generated'}</p>
+          </div>
+          <div class="xhs-extractor-polish-item">
+            <h4>中文内容</h4>
+            <p class="polish-content-cn">${polishedContent.chinese_content || '未生成'}</p>
+          </div>
+          <div class="xhs-extractor-polish-item">
+            <h4>English Content</h4>
+            <p class="polish-content-en">${polishedContent.english_content || 'Not generated'}</p>
+          </div>
+        `;
+        return; // 更新完成，直接返回
+      }
+    }
+
+    // 创建润色结果展示区域
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'xhs-extractor-polish-result';
+    resultDiv.innerHTML = `
+      <div class="xhs-extractor-polish-header" data-toggle="polish-result">
+        <span class="xhs-extractor-polish-icon">✨</span>
+        <span class="xhs-extractor-polish-title">AI润色结果</span>
+        <span class="xhs-extractor-collapse-btn">▼</span>
+      </div>
+      <div class="xhs-extractor-polish-content">
+        <div class="xhs-extractor-polish-item">
+          <h4>中文标题</h4>
+          <p class="polish-title-cn">${polishedContent.chinese_title || '未生成'}</p>
+        </div>
+        <div class="xhs-extractor-polish-item">
+          <h4>English Title</h4>
+          <p class="polish-title-en">${polishedContent.english_title || 'Not generated'}</p>
+        </div>
+        <div class="xhs-extractor-polish-item">
+          <h4>中文内容</h4>
+          <p class="polish-content-cn">${polishedContent.chinese_content || '未生成'}</p>
+        </div>
+        <div class="xhs-extractor-polish-item">
+          <h4>English Content</h4>
+          <p class="polish-content-en">${polishedContent.english_content || 'Not generated'}</p>
+        </div>
+
+      </div>
+    `;
+
+    // 插入到面板中
+    const noteContent = this.panel.querySelector('.xhs-extractor-note-content');
+    if (noteContent) {
+      noteContent.parentNode.insertBefore(resultDiv, noteContent.nextSibling);
+    } else {
+      this.panel.appendChild(resultDiv);
+    }
+
+    // 添加折叠功能
+    const polishHeader = resultDiv.querySelector('[data-toggle="polish-result"]');
+    if (polishHeader) {
+      polishHeader.addEventListener('click', () => {
+        const content = resultDiv.querySelector('.xhs-extractor-polish-content');
+        const collapseBtn = polishHeader.querySelector('.xhs-extractor-collapse-btn');
+        content.classList.toggle('collapsed');
+        collapseBtn.textContent = content.classList.contains('collapsed') ? '▶' : '▼';
+      });
+    }
+
+
+  }
+
+  async fillAIContentToReddit() {
+    console.log("📝 开始填充AI内容到Reddit");
+    
+    // 获取AI润色结果
+    const polishResult = this.panel.querySelector('.xhs-extractor-polish-result');
+    if (!polishResult) {
+      this.showNotification('请先生成AI润色内容', 'error');
+      return;
+    }
+    
+    // 获取英文标题和内容
+    const englishTitle = polishResult.querySelector('.polish-title-en')?.textContent;
+    const englishContent = polishResult.querySelector('.polish-content-en')?.textContent;
+    
+    if (!englishTitle || !englishContent || englishTitle === 'Not generated' || englishContent === 'Not generated') {
+      this.showNotification('AI润色结果不完整，请重新生成', 'error');
+      return;
+    }
+    
+    // 获取小红书笔记的图片数据
+    const noteData = await this.getStoredData();
+    if (!noteData) {
+      this.showNotification('未找到笔记数据', 'error');
+      return;
+    }
+    
+    try {
+      // 填充标题
+      const titleElement = this.findRedditTitleInput();
+      if (titleElement) {
+        this.fillTitleToElement(titleElement, englishTitle);
+        console.log("✅ 标题填充成功:", englishTitle);
+      }
+      
+      // 填充内容
+      const contentElement = this.findRedditContentInput();
+      if (contentElement) {
+        await this.fillContentToElement(contentElement, englishContent);
+        console.log("✅ 内容填充成功:", englishContent);
+      }
+      
+      // 处理图片
+      if (noteData.images && noteData.images.length > 0) {
+        console.log(`🖼️ 开始处理 ${noteData.images.length} 张图片`);
+        await this.prepareImagesForPasting(noteData);
+      }
+      
+      this.showNotification('AI内容填充成功！', 'success');
+      
+    } catch (error) {
+      console.error("❌ 填充AI内容失败:", error);
+      this.showNotification('填充失败，请重试', 'error');
+    }
   }
 
   showNotification(message, type = "success") {

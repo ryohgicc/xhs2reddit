@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "小红书笔记搬运助手",
-  "version": "1.0.68",
+  "version": "1.0.69",
   "description": "自动提取小红书笔记内容，支持标题、正文和图片下载",
   "permissions": [
     "activeTab",
@@ -14,7 +14,10 @@
     "https://www.xiaohongshu.com/*",
     "https://www.reddit.com/*",
     "https://sns-webpic-qc.xhscdn.com/*",
-    "https://*.xhscdn.com/*"
+    "https://*.xhscdn.com/*",
+    "https://ark.cn-beijing.volces.com/*",
+    "https://api.openai.com/*",
+    "https://*/*"
   ],
   "background": {
     "service_worker": "background.js"
