@@ -1,18 +1,18 @@
 // 弹出窗口脚本
 
 document.addEventListener('DOMContentLoaded', function() {
-    // 设置按钮点击事件
-    document.getElementById('open-settings').addEventListener('click', function() {
+    // 使用说明按钮点击事件
+    document.getElementById('open-usage').addEventListener('click', function() {
         chrome.tabs.create({
-            url: chrome.runtime.getURL('settings.html')
+            url: 'https://github.com/ryohgicc/xhs2reddit/blob/main/README.md'
         });
         window.close();
     });
 
-    // 帮助按钮点击事件
-    document.getElementById('open-help').addEventListener('click', function() {
+    // 更新日志按钮点击事件
+    document.getElementById('open-changelog').addEventListener('click', function() {
         chrome.tabs.create({
-            url: chrome.runtime.getURL('help.html')
+            url: 'https://github.com/ryohgicc/xhs2reddit/blob/main/CHANGELOG.md'
         });
         window.close();
     });
