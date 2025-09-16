@@ -2488,12 +2488,15 @@ ${subredditRules.rules}
       try {
         return JSON.parse(content);
       } catch (e) {
+        console.log('AI原始返回内容:', content);
         // 如果不是JSON格式，尝试提取JSON部分
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
+            console.log('提取的JSON部分:', jsonMatch[0]);
             return JSON.parse(jsonMatch[0]);
           } catch (parseError) {
+            console.error('JSON解析错误:', parseError);
             throw new Error('AI返回的JSON格式不正确');
           }
         }
