@@ -2,6 +2,20 @@
 
 所有重要的项目变更都会记录在此文件中。
 
+## [1.0.70] - 2024-01-15
+
+### 技术改进
+- 🔧 **Prompt配置化** - 将AI润色的prompt模板提取到独立的`prompts.json`配置文件
+- ⚙️ **配置文件管理** - 新增配置加载机制，支持动态读取和备用默认配置
+- 🛠️ **代码重构** - 重构`buildPolishPrompt`方法，改为异步加载配置文件
+- 📝 **可维护性提升** - 用户可直接修改`prompts.json`文件来自定义AI润色的prompt内容
+- 🌐 **扩展兼容** - 更新Chrome和Firefox版本的manifest文件，添加配置文件访问权限
+
+### 文件变更
+- 新增 `prompts.json` - AI润色prompt配置文件
+- 更新 `content.js` - 添加配置加载方法和异步prompt构建
+- 更新 `manifest.json` 和 `manifest-firefox.json` - 添加prompts.json到web_accessible_resources
+
 ## [1.0.69] - 2024-01-15
 
 ### 新增功能
