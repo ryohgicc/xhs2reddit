@@ -49,6 +49,7 @@
     "128": "images/icon.svg"
   },
   "web_accessible_resources": [
-    "images/icon.svg"
+    "images/icon.svg",
+    "prompts.json"
   ]
 }

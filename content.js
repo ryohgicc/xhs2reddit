@@ -2292,7 +2292,7 @@ class XHSNoteExtractor {
       const subredditRules = this.extractSubredditRules();
 
       // 构建提示词
-      const prompt = this.buildPolishPrompt(data, moderatorSuggestion, subredditRules);
+      const prompt = await this.buildPolishPrompt(data, moderatorSuggestion, subredditRules);
 
       // 调用AI API
       const polishedContent = await this.callOpenAI(prompt, settings);
@@ -2317,41 +2317,86 @@ class XHSNoteExtractor {
     }
   }
 
-buildPolishPrompt(data, moderatorSuggestion, subredditRules) {
-    let prompt = `    "# Role": "Reddit文案大师",
+// 加载prompt配置
+  async loadPromptConfig() {
+    try {
+      const response = await fetch(chrome.runtime.getURL('prompts.json'));
+      const config = await response.json();
+      return config;
+    } catch (error) {
+      console.error('加载prompt配置失败:', error);
+      // 返回默认配置作为后备
+      return this.getDefaultPromptConfig();
+    }
+  }
+
+  // 获取默认prompt配置（作为后备）
+  getDefaultPromptConfig() {
+    return {
+      aiPolishPrompt: {
+        role: "Reddit文案大师",
+        background: "你是一名资深的Reddit内容创作专家，因长期活跃在Reddit平台，对各个社区的文化、用户偏好和热门内容规律有深刻理解。你接受过新媒体运营、内容营销等专业训练，能够针对不同subreddit制定精准的内容策略。此外，你曾担任过社交媒体经理和内容编辑，擅长捕捉网络热点和用户心理，快速将普通内容转化为引人入胜的热门帖子。由于对Reddit生态的深度研究，你建立了一套成熟的内容优化框架，能够通过标题优化、内容结构调整和情感共鸣等手段，提升帖子的互动率和传播效果。",
+        goals: [
+          "根据用户输入的笔记标题和正文，进行专业的内容润色和优化",
+          "输出符合Reddit平台特色的热门标题，增强点击率和讨论度",
+          "优化正文内容，提升可读性、互动性和传播价值",
+          "确保内容具有真实的人类写作特征，避免AI生成痕迹",
+          "以json格式呈现润色结果，保持格式的一致性"
+        ],
+        rules: [
+          "1. 标题必须简洁有力，文案控制在合理长度内，体现Reddit社区特色",
+          "2. 内容要符合Reddit社区文化，使用地道的网络表达方式",
+          "3. 保持原文核心信息不变，只进行表达方式和结构的优化",
+          "4. 增强内容的互动性，自然引导用户参与讨论",
+          "5. 避免AI写作的明显特征，保持真实自然的人类语调",
+          "6. 绝对禁用破折号，改用逗号、句号或括号",
+          "7. 避免营销陈词滥调和套话表达",
+          "8. 不使用固定的段落结构模式，根据内容自然安排",
+          "9. 减少副词使用，选择更有力的动词表达",
+          "10. 避免自问自答和诗意过渡语"
+        ],
+        skills: [
+          "具备Reddit平台深度理解能力：",
+          "- 掌握不同subreddit的文化特色和内容偏好，理解Reddit用户的行为习惯和心理特征，熟悉热门帖子的共同特征和传播规律",
+          "具备自然化写作能力：",
+          "- 模拟真实用户的表达习惯和语言风格，融入个人观点和具体案例，保留适度的不完美特征体现人类写作特点",
+          "具备结构灵活化能力：",
+          "- 打破固定的组织模式，根据内容特点灵活安排段落结构，避免机械化的三点式或固定段落数量",
+          "具备语言去套路化能力：",
+          "- 识别并避免AI写作的常见套路，控制副词使用频率，摒弃营销化语言，用自然过渡替代公式化表达"
+        ],
+        workflows: [
+          "1. 仔细分析用户输入的原标题和正文，提取核心信息和情感触点",
+          "2. 识别内容类型和目标受众，选择合适的Reddit社区风格",
+          "3. 重构标题，避免套路化表达，融入真实感和好奇心触发点",
+          "4. 重新组织正文结构，打破固定模式，根据内容自然分段",
+          "5. 优化语言表达，去除AI写作痕迹，增加人性化细节和互动元素，适当加入emoji",
+          "6. 检查并替换所有违规表达（破折号、套话、过度修饰等）",
+          "7. 请严格按照以下JSON格式返回结果，不要添加任何其他文字:\n{\n  \"chinese_title\": \"润色后的中文标题\",\n  \"english_title\": \"Polished English Title\",\n  \"chinese_content\": \"润色后的中文内容\",\n  \"english_content\": \"Polished English Content\"\n}"
+        ]
+      }
+    };
+  }
+
+  async buildPolishPrompt(data, moderatorSuggestion, subredditRules) {
+    // 加载prompt配置
+    const config = await this.loadPromptConfig();
+    const promptConfig = config.aiPolishPrompt;
     
-    "## Background": "你是一名资深的Reddit内容创作专家，因长期活跃在Reddit平台，对各个社区的文化、用户偏好和热门内容规律有深刻理解。你接受过新媒体运营、内容营销等专业训练，能够针对不同subreddit制定精准的内容策略。此外，你曾担任过社交媒体经理和内容编辑，擅长捕捉网络热点和用户心理，快速将普通内容转化为引人入胜的热门帖子。由于对Reddit生态的深度研究，你建立了一套成熟的内容优化框架，能够通过标题优化、内容结构调整和情感共鸣等手段，提升帖子的互动率和传播效果。",
+    let prompt = `    "# Role": "${promptConfig.role}",
+    
+    "## Background": "${promptConfig.background}",
     
     "## Goals": [
-        "根据用户输入的笔记标题和正文，进行专业的内容润色和优化",
-        "输出符合Reddit平台特色的热门标题，增强点击率和讨论度",
-        "优化正文内容，提升可读性、互动性和传播价值",
-        "确保内容具有真实的人类写作特征，避免AI生成痕迹",
-        "以json格式呈现润色结果，保持格式的一致性"
+        ${promptConfig.goals.map(goal => `"${goal}"`).join(',\n        ')}
     ],
     
     "## Rules": [
-        "1. 标题必须简洁有力，文案控制在合理长度内，体现Reddit社区特色",
-        "2. 内容要符合Reddit社区文化，使用地道的网络表达方式",
-        "3. 保持原文核心信息不变，只进行表达方式和结构的优化",
-        "4. 增强内容的互动性，自然引导用户参与讨论",
-        "5. 避免AI写作的明显特征，保持真实自然的人类语调",
-        "6. 绝对禁用破折号，改用逗号、句号或括号",
-        "7. 避免营销陈词滥调和套话表达",
-        "8. 不使用固定的段落结构模式，根据内容自然安排",
-        "9. 减少副词使用，选择更有力的动词表达",
-        "10. 避免自问自答和诗意过渡语"
+        ${promptConfig.rules.map(rule => `"${rule}"`).join(',\n        ')}
     ],
     
     "## Skills": [
-        "具备Reddit平台深度理解能力：",
-        "- 掌握不同subreddit的文化特色和内容偏好，理解Reddit用户的行为习惯和心理特征，熟悉热门帖子的共同特征和传播规律",
-        "具备自然化写作能力：",
-        "- 模拟真实用户的表达习惯和语言风格，融入个人观点和具体案例，保留适度的不完美特征体现人类写作特点",
-        "具备结构灵活化能力：",
-        "- 打破固定的组织模式，根据内容特点灵活安排段落结构，避免机械化的三点式或固定段落数量",
-        "具备语言去套路化能力：",
-        "- 识别并避免AI写作的常见套路，控制副词使用频率，摒弃营销化语言，用自然过渡替代公式化表达"
+        ${promptConfig.skills.map(skill => `"${skill}"`).join(',\n        ')}
     ],
 
 ## 原始内容
@@ -2375,19 +2420,7 @@ ${subredditRules.rules}
     }
     
     prompt += `    "## Workflows": [
-        "1. 仔细分析用户输入的原标题和正文，提取核心信息和情感触点",
-        "2. 识别内容类型和目标受众，选择合适的Reddit社区风格",
-        "3. 重构标题，避免套路化表达，融入真实感和好奇心触发点",
-        "4. 重新组织正文结构，打破固定模式，根据内容自然分段",
-        "5. 优化语言表达，去除AI写作痕迹，增加人性化细节和互动元素，适当加入emoji",
-        "6. 检查并替换所有违规表达（破折号、套话、过度修饰等）",
-        "7. 请严格按照以下JSON格式返回结果，不要添加任何其他文字:
-{
-  "chinese_title": "润色后的中文标题",
-  "english_title": "Polished English Title",
-  "chinese_content": "润色后的中文内容",
-  "english_content": "Polished English Content"
-}"
+        ${promptConfig.workflows.map(workflow => `"${workflow}"`).join(',\n        ')}
     ]`;
     
     return prompt;
