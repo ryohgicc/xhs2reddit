@@ -2485,6 +2485,8 @@ ${subredditRules.rules}
         throw new Error('API返回内容为空');
       }
 
+      console.log('AI返回结果:', content);
+
       try {
         return JSON.parse(content);
       } catch (e) {
