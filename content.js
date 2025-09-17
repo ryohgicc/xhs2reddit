@@ -2486,11 +2486,16 @@ ${subredditRules.rules}
       }
 
       console.log('AI返回结果:', content);
+      console.log('AI返回内容长度:', content.length);
+      console.log('AI返回内容类型:', typeof content);
 
       try {
         return JSON.parse(content);
       } catch (e) {
-        throw new Error('AI返回格式不正确，无法解析JSON');
+        console.error('JSON解析错误详情:', e.message);
+        console.log('错误内容前100字符:', content.substring(0, 100));
+        console.log('错误内容后100字符:', content.substring(content.length - 100));
+        throw new Error(`AI返回格式不正确，无法解析JSON: ${e.message}`);
       }
     } catch (error) {
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
