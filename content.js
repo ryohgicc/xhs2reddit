@@ -2513,8 +2513,7 @@ ${subredditRules.rules}
               .replace(/\n/g, '\\n')
               .replace(/\r/g, '\\r')
               .replace(/\t/g, '\\t')
-              .replace(/\b/g, '\\b')
-              .replace(/\f/g, '\\f');
+              .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
             console.log('清理后的JSON:', cleanedJson);
             return JSON.parse(cleanedJson);
           } catch (parseError) {
