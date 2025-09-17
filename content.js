@@ -2508,13 +2508,8 @@ ${subredditRules.rules}
         if (jsonMatch) {
           try {
             console.log('提取的JSON部分:', jsonMatch[0]);
-            // 转义JSON字符串中的控制字符
-            const cleanedJson = jsonMatch[0]
-              .trim()  // 去除开头和结尾的空白字符
-              .replace(/\n/g, '\\n')
-              .replace(/\r/g, '\\r')
-              .replace(/\t/g, '\\t')
-              .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+            // 只去除开头和结尾的空白字符，保持JSON内容不变
+            const cleanedJson = jsonMatch[0].trim();
             console.log('清理后的JSON:', cleanedJson);
             return JSON.parse(cleanedJson);
           } catch (parseError) {
