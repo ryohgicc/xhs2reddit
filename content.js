@@ -2510,6 +2510,7 @@ ${subredditRules.rules}
             console.log('提取的JSON部分:', jsonMatch[0]);
             // 转义JSON字符串中的控制字符
             const cleanedJson = jsonMatch[0]
+              .trim()  // 去除开头和结尾的空白字符
               .replace(/\n/g, '\\n')
               .replace(/\r/g, '\\r')
               .replace(/\t/g, '\\t')
