@@ -2508,7 +2508,15 @@ ${subredditRules.rules}
         if (jsonMatch) {
           try {
             console.log('提取的JSON部分:', jsonMatch[0]);
-            return JSON.parse(jsonMatch[0]);
+            // 转义JSON字符串中的控制字符
+            const cleanedJson = jsonMatch[0]
+              .replace(/\n/g, '\\n')
+              .replace(/\r/g, '\\r')
+              .replace(/\t/g, '\\t')
+              .replace(/\b/g, '\\b')
+              .replace(/\f/g, '\\f');
+            console.log('清理后的JSON:', cleanedJson);
+            return JSON.parse(cleanedJson);
           } catch (parseError) {
             console.error('JSON解析错误:', parseError);
             
