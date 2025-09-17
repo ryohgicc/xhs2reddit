@@ -2489,12 +2489,16 @@ ${subredditRules.rules}
       console.log('AI返回内容长度:', content.length);
       console.log('AI返回内容类型:', typeof content);
 
+      // 清理控制字符，包括换行符、制表符等
+      const cleanedContent = content.replace(/[\x00-\x1F\x7F]/g, '');
+      console.log('清理后内容:', cleanedContent);
+
       try {
-        return JSON.parse(content);
+        return JSON.parse(cleanedContent);
       } catch (e) {
         console.error('JSON解析错误详情:', e.message);
-        console.log('错误内容前100字符:', content.substring(0, 100));
-        console.log('错误内容后100字符:', content.substring(content.length - 100));
+        console.log('错误内容前100字符:', cleanedContent.substring(0, 100));
+        console.log('错误内容后100字符:', cleanedContent.substring(cleanedContent.length - 100));
         throw new Error(`AI返回格式不正确，无法解析JSON: ${e.message}`);
       }
     } catch (error) {
