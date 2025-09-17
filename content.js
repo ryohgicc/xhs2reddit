@@ -2488,49 +2488,6 @@ ${subredditRules.rules}
       try {
         return JSON.parse(content);
       } catch (e) {
-        console.log('AI原始返回内容:', content);
-        console.log('内容长度:', content.length);
-        
-        // 如果是语法错误，显示错误位置周围的内容
-        if (e.message.includes('position')) {
-          const match = e.message.match(/position (\d+)/);
-          if (match) {
-            const pos = parseInt(match[1]);
-            const start = Math.max(0, pos - 50);
-            const end = Math.min(content.length, pos + 50);
-            console.log(`错误位置 ${pos} 周围内容:`, content.substring(start, end));
-            console.log('错误位置字符:', JSON.stringify(content[pos]));
-          }
-        }
-        
-        // 如果不是JSON格式，尝试提取JSON部分
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            console.log('提取的JSON部分:', jsonMatch[0]);
-            // 只去除开头和结尾的空白字符，保持JSON内容不变
-            const cleanedJson = jsonMatch[0].trim();
-            console.log('清理后的JSON:', cleanedJson);
-            return JSON.parse(cleanedJson);
-          } catch (parseError) {
-            console.error('JSON解析错误:', parseError);
-            
-            // 同样显示提取部分的错误位置
-            if (parseError.message.includes('position')) {
-              const match = parseError.message.match(/position (\d+)/);
-              if (match) {
-                const pos = parseInt(match[1]);
-                const jsonContent = jsonMatch[0];
-                const start = Math.max(0, pos - 50);
-                const end = Math.min(jsonContent.length, pos + 50);
-                console.log(`提取JSON错误位置 ${pos} 周围内容:`, jsonContent.substring(start, end));
-                console.log('提取JSON错误位置字符:', JSON.stringify(jsonContent[pos]));
-              }
-            }
-            
-            throw new Error('AI返回的JSON格式不正确');
-          }
-        }
         throw new Error('AI返回格式不正确，无法解析JSON');
       }
     } catch (error) {
