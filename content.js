@@ -2489,8 +2489,8 @@ ${subredditRules.rules}
       console.log('AI返回内容长度:', content.length);
       console.log('AI返回内容类型:', typeof content);
 
-      // 清理控制字符，包括换行符、制表符等
-      const cleanedContent = content.replace(/[\x00-\x1F\x7F]/g, '');
+      // 清理有问题的控制字符，但保留JSON中的合法空白字符
+      const cleanedContent = content.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
       console.log('清理后内容:', cleanedContent);
 
       try {
